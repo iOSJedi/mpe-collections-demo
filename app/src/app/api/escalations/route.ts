@@ -50,8 +50,8 @@ export const GET = withAuth(async (request: NextRequest) => {
       status: r.status,
       assigned_to: r.assigned_to ?? null,
       resolution_notes: r.resolution_notes ?? null,
-      created_at: r.created_at ? r.created_at.toISOString() : '',
-      resolved_at: r.resolved_at ? r.resolved_at.toISOString() : null,
+      created_at: r.created_at ? String(r.created_at) : '',
+      resolved_at: r.resolved_at ? String(r.resolved_at) : null,
     }))
 
     return NextResponse.json(result)

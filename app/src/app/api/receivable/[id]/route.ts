@@ -178,7 +178,7 @@ export async function GET(
         invoice_number: p.invoice_number ?? '',
         amount: Number(p.amount),
         payment_method: p.payment_method,
-        payment_date: p.payment_date ? p.payment_date.toISOString() : '',
+        payment_date: p.payment_date ? String(p.payment_date) : '',
         reference_number: p.reference_number ?? null,
         status: p.status,
       })),

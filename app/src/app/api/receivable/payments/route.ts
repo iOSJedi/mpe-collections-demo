@@ -79,7 +79,7 @@ export const GET = withAuth(async (request: NextRequest) => {
       customer_name: r.customer_name,
       amount: Number(r.amount),
       payment_method: r.payment_method,
-      payment_date: r.payment_date ? r.payment_date.toISOString() : '',
+      payment_date: r.payment_date ? String(r.payment_date) : '',
       reference_number: r.reference_number ?? null,
       status: r.status,
     }))

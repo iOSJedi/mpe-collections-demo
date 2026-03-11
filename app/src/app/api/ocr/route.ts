@@ -80,7 +80,7 @@ export const POST = withAuth(async (request: NextRequest) => {
           balanceRemaining: Number(invoiceRow.balanceRemaining),
           dueDate: invoiceRow.dueDate,
           customerName: invoiceRow.customerName,
-          issuedAt: invoiceRow.issuedAt ? invoiceRow.issuedAt.toISOString() : new Date().toISOString(),
+          issuedAt: invoiceRow.issuedAt ? String(invoiceRow.issuedAt) : new Date().toISOString(),
         }
 
         validationResult = validateDocument(

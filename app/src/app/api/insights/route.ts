@@ -24,7 +24,7 @@ export const GET = withAuth(async (_request: NextRequest) => {
       related_entity_type: c.relatedEntityType,
       related_entity_id: c.relatedEntityId,
       related_params: c.relatedParams,
-      created_at: c.createdAt?.toISOString() ?? null,
+      created_at: c.createdAt ? String(c.createdAt) : null,
     }))
 
     return NextResponse.json({ insights })
