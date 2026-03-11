@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { invoices, contracts, customers, qrCodes } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -6,7 +7,7 @@ import { signQrToken } from '@/lib/jwt'
 import { generateQrDataUrl } from '@/lib/qr'
 import { QrPayload } from '@/types'
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body = await request.json()
     const { invoiceId } = body
@@ -80,4 +81,4 @@ export async function POST(request: NextRequest) {
     console.error('Failed to generate QR code:', error)
     return NextResponse.json({ error: 'Failed to generate QR code' }, { status: 500 })
   }
-}
+})

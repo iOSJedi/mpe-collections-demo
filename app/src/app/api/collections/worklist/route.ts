@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { invoices, customers, delinquencyScores, incomingPayments } from '@/db/schema'
 import { eq, inArray, sql, desc } from 'drizzle-orm'
@@ -8,7 +9,7 @@ import type { WorklistItem } from '@/types'
 // Returns invoices grouped by customer_id where status IN ('OVERDUE','PARTIAL')
 // Joined with delinquency_scores for risk_level, incoming_payments for last payment date
 // Sorted by total_overdue DESC
-export async function GET() {
+export const GET = withAuth(async (_request: NextRequest) => {
   try {
     const rows = await db
       .select({
@@ -53,4 +54,4 @@ export async function GET() {
     console.error('Failed to fetch collections worklist:', error)
     return NextResponse.json({ error: 'Failed to fetch collections worklist' }, { status: 500 })
   }
-}
+})

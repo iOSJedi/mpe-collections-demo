@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { escalations } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -16,6 +17,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await verifyToken(request)
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
   try {
     const { id } = await params
     const escalationId = Number(id)

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { invoices, contracts } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 // GET /api/invoices?customerId=N
 // Returns invoices for a specific customer, joined with contracts for contract_number
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url)
     const customerIdParam = searchParams.get('customerId')
@@ -53,4 +54,4 @@ export async function GET(request: NextRequest) {
     console.error('Failed to fetch invoices:', error)
     return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
   }
-}
+})

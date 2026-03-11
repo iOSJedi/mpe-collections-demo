@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { documents, escalations, invoices, customers, incomingPayments } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -7,7 +8,7 @@ import { validateDocument } from '@/lib/validation'
 
 // POST /api/ocr — trigger OCR + validation for a document
 // Body: { documentId: number }
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body = await request.json()
     const { documentId } = body
@@ -139,4 +140,4 @@ export async function POST(request: NextRequest) {
     console.error('Failed to run OCR:', error)
     return NextResponse.json({ error: 'Failed to run OCR' }, { status: 500 })
   }
-}
+})

@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { documents, customers, invoices } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 // GET /api/documents/[id] — return a single document with full OCR and validation results
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await verifyToken(request)
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
   try {
     const { id } = await params
     const documentId = Number(id)

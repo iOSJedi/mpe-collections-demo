@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { insightCards, churnScores } from '@/db/schema'
 import { sql, eq } from 'drizzle-orm'
@@ -276,7 +276,16 @@ function generateDemoInsights(
   return cards
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  // Protect cron endpoint with a shared secret
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret) {
+    const authHeader = request.headers.get('authorization')
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
   try {
     // Step 1: Gather analytics data from the database
     const analyticsData = await gatherAnalyticsData()

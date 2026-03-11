@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { escalations, customers, documents, invoices } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -7,7 +8,7 @@ import type { EscalationRecord } from '@/types'
 // GET /api/escalations
 // List escalation records joined with customer name, document file_name, invoice number
 // Optional query param: status
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url)
     const statusParam = searchParams.get('status')
@@ -58,4 +59,4 @@ export async function GET(request: NextRequest) {
     console.error('Failed to fetch escalations:', error)
     return NextResponse.json({ error: 'Failed to fetch escalations' }, { status: 500 })
   }
-}
+})

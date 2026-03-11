@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth-middleware'
+import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import {
   customers,
@@ -14,12 +14,18 @@ import {
 import { eq, desc, gte, sql } from 'drizzle-orm'
 import type { CustomerDetail } from '@/types'
 
-export const GET = withAuth(async (
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await verifyToken(request)
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
   try {
-    const customerId = parseInt(params.id, 10)
+    const { id } = await params
+    const customerId = parseInt(id, 10)
     if (isNaN(customerId)) {
       return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 })
     }
@@ -183,4 +189,4 @@ export const GET = withAuth(async (
     console.error('Failed to fetch customer detail:', error)
     return NextResponse.json({ error: 'Failed to fetch customer detail' }, { status: 500 })
   }
-})
+}

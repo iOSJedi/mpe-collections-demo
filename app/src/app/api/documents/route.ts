@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { documents, customers, invoices } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -6,7 +7,7 @@ import { eq, and } from 'drizzle-orm'
 // POST /api/documents — upload a payment proof document
 // Accepts multipart form data: file, customerId, invoiceId
 // Stores file as Base64 in file_url for demo purposes
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
@@ -52,11 +53,11 @@ export async function POST(request: NextRequest) {
     console.error('Failed to upload document:', error)
     return NextResponse.json({ error: 'Failed to upload document' }, { status: 500 })
   }
-}
+})
 
 // GET /api/documents — list documents with optional filters
 // Query params: customerId, ocrStatus
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url)
     const customerIdParam = searchParams.get('customerId')
@@ -93,4 +94,4 @@ export async function GET(request: NextRequest) {
     console.error('Failed to list documents:', error)
     return NextResponse.json({ error: 'Failed to list documents' }, { status: 500 })
   }
-}
+})
