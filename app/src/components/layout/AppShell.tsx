@@ -2,6 +2,7 @@
 
 import { TopBar } from './TopBar'
 import { Sidebar } from './Sidebar'
+import { BottomBar } from './BottomBar'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <BottomBar />
     </div>
   )
 }
