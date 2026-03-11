@@ -1,11 +1,30 @@
 'use client'
+import { useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { LoginPage } from '@/components/auth/LoginPage'
+import { AppShell } from '@/components/layout/AppShell'
+import { PageLoadingSpinner } from '@/components/ui/page-loading-spinner'
+import { useAppDispatch } from '@/store'
+import { navigate } from '@/store/slices/navSlice'
 import { EscalationQueue } from '@/components/collections/EscalationQueue'
 
 export default function EscalationsPage() {
+  const { user, loading } = useAuth()
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    dispatch(navigate({ space: 'collections', page: 'escalation-queue' }))
+  }, [dispatch])
+
+  if (loading) return <PageLoadingSpinner message="Loading..." />
+  if (!user) return <LoginPage />
+
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Escalation Queue</h1>
-      <EscalationQueue />
-    </div>
+    <AppShell>
+      <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-primary">Escalation Queue</h1>
+        <EscalationQueue />
+      </div>
+    </AppShell>
   )
 }
