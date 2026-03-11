@@ -21,7 +21,8 @@ export const GET = withAuth(async (_request: NextRequest) => {
       title: c.title,
       body: c.body,
       action: c.action,
-      related_intent: c.relatedIntent,
+      related_entity_type: c.relatedEntityType,
+      related_entity_id: c.relatedEntityId,
       related_params: c.relatedParams,
       created_at: c.createdAt?.toISOString() ?? null,
     }))

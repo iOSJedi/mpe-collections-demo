@@ -174,7 +174,7 @@ function AnalyticsContent() {
                 width={70}
               />
               <Tooltip
-                formatter={(value: number) => formatPHP(value)}
+                formatter={(value: number | undefined) => formatPHP(value ?? 0)}
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <Legend />
@@ -214,7 +214,7 @@ function AnalyticsContent() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={formatPHP} width={70} />
-              <Tooltip formatter={(value: number) => formatPHP(value)} />
+              <Tooltip formatter={(value: number | undefined) => formatPHP(value ?? 0)} />
               <Legend />
               <Bar dataKey="collected" name="Collected" fill="#3b82f6" radius={[3, 3, 0, 0]} />
               <Bar dataKey="outstanding" name="Outstanding" fill="#f59e0b" radius={[3, 3, 0, 0]} />
@@ -243,8 +243,8 @@ function AnalyticsContent() {
                   outerRadius={100}
                   innerRadius={55}
                   paddingAngle={3}
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
+                  label={({ name, percent }: { name?: string; percent?: number }) =>
+                    `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
                   }
                   labelLine={false}
                 >
@@ -255,7 +255,7 @@ function AnalyticsContent() {
                     />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => `${value} customers`} />
+                <Tooltip formatter={(value: number | undefined) => `${value ?? 0} customers`} />
               </PieChart>
             </ResponsiveContainer>
 

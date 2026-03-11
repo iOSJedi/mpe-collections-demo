@@ -8,10 +8,10 @@ import { ArrowRight } from 'lucide-react'
 import type { InsightCard } from '@/types'
 
 const severityConfig = {
-  alert: {
+  critical: {
     dotColor: 'bg-destructive',
     badgeVariant: 'destructive' as const,
-    label: 'Alert',
+    label: 'Critical',
   },
   warning: {
     dotColor: 'bg-warning',
@@ -36,10 +36,10 @@ interface InsightCardComponentProps {
 
 export function InsightCardComponent({ insight }: InsightCardComponentProps) {
   const router = useRouter()
-  const config = severityConfig[insight.severity] || severityConfig.info
+  const config = severityConfig[insight.severity as keyof typeof severityConfig] || severityConfig.info
 
   const handleDigDeeper = () => {
-    const question = insight.related_intent
+    const question = insight.related_entity_type
       ? `Tell me more about: ${insight.title}`
       : `Explain this insight: ${insight.title}`
     router.push(`/intelligence?q=${encodeURIComponent(question)}`)
