@@ -3,11 +3,11 @@
 import { MessageSquareText } from 'lucide-react'
 
 const STARTER_QUESTIONS = [
-  'What are the top selling products this month?',
-  'Which wholesale buyers are at risk?',
-  'Compare branch performance this quarter',
-  'Show me customer segments breakdown',
-  'Which products are frequently bought together?',
+  'Which customers have the highest overdue balances?',
+  'Show me payer segment breakdown',
+  'What is the collections trend this quarter?',
+  'Which suppliers have pending 3-way match issues?',
+  'Show me the credit risk distribution across accounts',
 ]
 
 interface StarterQuestionsProps {
@@ -22,7 +22,7 @@ export function StarterQuestions({ onSelect }: StarterQuestionsProps) {
         <h2 className="text-xl font-semibold text-primary">Ask your data</h2>
       </div>
       <p className="text-muted-foreground text-sm mb-8 text-center max-w-md">
-        Ask questions about sales, customers, credit risk, and branch performance.
+        Ask questions about receivables, payables, collections, and credit risk.
         Get answers with charts and actionable insights.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">

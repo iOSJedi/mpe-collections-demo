@@ -399,7 +399,7 @@ export async function chat(
   follow_up_suggestions: string[]
 }> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-pro-preview-05-06',
+    model: 'gemini-2.5-flash',
     tools: [{ functionDeclarations: [runSqlDeclaration] }],
     toolConfig: { functionCallingConfig: { mode: FunctionCallingMode.AUTO } },
     generationConfig: { temperature: 0.2 },

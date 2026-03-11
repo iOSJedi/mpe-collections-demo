@@ -16,6 +16,11 @@ export const POST = withAuth(async (request: NextRequest) => {
       return NextResponse.json({ error: 'invoiceId is required' }, { status: 400 })
     }
 
+    const invoiceIdNum = Number(invoiceId)
+    if (isNaN(invoiceIdNum)) {
+      return NextResponse.json({ error: 'invoiceId must be a number' }, { status: 400 })
+    }
+
     // Look up invoice with joined contract and customer data
     const result = await db
       .select({
@@ -32,7 +37,7 @@ export const POST = withAuth(async (request: NextRequest) => {
       .from(invoices)
       .innerJoin(contracts, eq(invoices.contractId, contracts.contractId))
       .innerJoin(customers, eq(invoices.customerId, customers.customerId))
-      .where(eq(invoices.invoiceId, invoiceId))
+      .where(eq(invoices.invoiceId, invoiceIdNum))
       .limit(1)
 
     if (!result.length) {
@@ -48,7 +53,7 @@ export const POST = withAuth(async (request: NextRequest) => {
       acct: invoice.accountNumber,
       amt: Number(invoice.amount),
       bal: Number(invoice.balanceRemaining),
-      due: invoice.dueDate,
+      due: String(invoice.dueDate),
       exp: Date.now() + 24 * 60 * 60 * 1000,
     }
 
@@ -76,9 +81,18 @@ export const POST = withAuth(async (request: NextRequest) => {
       expiresAt,
     })
 
-    return NextResponse.json({ qrDataUrl, encodedUrl: paymentUrl, expiresAt: expiresAt.toISOString() })
+    return NextResponse.json({
+      qrDataUrl,
+      encodedUrl: paymentUrl,
+      expiresAt: expiresAt.toISOString(),
+      invoiceNumber: invoice.invoiceNumber,
+      amount: Number(invoice.amount),
+      contractNumber: invoice.contractNumber,
+      accountNumber: invoice.accountNumber,
+    })
   } catch (error) {
-    console.error('Failed to generate QR code:', error)
-    return NextResponse.json({ error: 'Failed to generate QR code' }, { status: 500 })
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('Failed to generate QR code:', errMsg, error)
+    return NextResponse.json({ error: `Failed to generate QR code: ${errMsg}` }, { status: 500 })
   }
 })
