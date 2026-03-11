@@ -185,6 +185,9 @@ const BILLING_MONTHS = [
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export async function seedDatabase() {
+  // Reset PRNG seed so re-seeding produces identical data every time
+  _seed = 42
+
   console.log('🌱 Starting Ayala Land Payments Portal seed...\n')
 
   // ── 0. TRUNCATE ALL TABLES (idempotent re-run) ─────────────────────────────
@@ -524,7 +527,9 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedGRs = await db.insert(schema.goodsReceipts).values(grRows).returning()
+  const insertedGRs = grRows.length > 0
+    ? await db.insert(schema.goodsReceipts).values(grRows).returning()
+    : []
   console.log(`  Inserted ${insertedGRs.length} goods receipts`)
 
   // ── 8. INSERT SUPPLIER INVOICES ───────────────────────────────────────────
@@ -577,7 +582,9 @@ export async function seedDatabase() {
     siCounter++
   }
 
-  const insertedSIs = await db.insert(schema.supplierInvoices).values(siRows).returning()
+  const insertedSIs = siRows.length > 0
+    ? await db.insert(schema.supplierInvoices).values(siRows).returning()
+    : []
   console.log(`  Inserted ${insertedSIs.length} supplier invoices`)
 
   // ── 9. INSERT OUTGOING PAYMENTS (for paid supplier invoices) ─────────────
@@ -605,7 +612,9 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedOPs = await db.insert(schema.outgoingPayments).values(opRows).returning()
+  const insertedOPs = opRows.length > 0
+    ? await db.insert(schema.outgoingPayments).values(opRows).returning()
+    : []
   console.log(`  Inserted ${insertedOPs.length} outgoing payments`)
 
   // ── 10. INSERT 3-WAY MATCHES ──────────────────────────────────────────────
@@ -692,7 +701,9 @@ export async function seedDatabase() {
     twmCounter++
   }
 
-  const insertedTWMs = await db.insert(schema.threeWayMatches).values(twmRows).returning()
+  const insertedTWMs = twmRows.length > 0
+    ? await db.insert(schema.threeWayMatches).values(twmRows).returning()
+    : []
   console.log(`  Inserted ${insertedTWMs.length} 3-way matches`)
 
   // ── 11. INSERT ML SCORES ──────────────────────────────────────────────────
