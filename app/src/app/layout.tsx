@@ -10,8 +10,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Data Intelligence System',
-  description: 'Predictive analytics and data-to-decision intelligence',
+  title: 'Ayala Land Collections Portal',
+  description: 'Collections & Payments Management System',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
