@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { apiFetch } from '@/lib/api'
 
 interface PaymentRecord {
   payment_id: number
@@ -55,7 +56,7 @@ export function EmulatorHistory({ customerId }: EmulatorHistoryProps) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetch(`/api/receivable/payments?customerId=${customerId}`)
+    apiFetch(`/api/receivable/payments?customerId=${customerId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch payment history')
         return res.json()

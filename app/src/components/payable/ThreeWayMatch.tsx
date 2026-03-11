@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { ThreeWayMatchRow } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { apiFetch } from '@/lib/api'
 import { MatchDetail } from './MatchDetail'
 
 const MATCH_STATUS_BADGE: Record<string, string> = {
@@ -59,7 +60,7 @@ export function ThreeWayMatch() {
       if (supplierFilter) params.set('supplier_id', supplierFilter)
       if (search) params.set('search', search)
 
-      const res = await fetch(`/api/payable/matching?${params.toString()}`)
+      const res = await apiFetch(`/api/payable/matching?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load matches')
       const data: MatchRow[] = await res.json()
       setMatches(data)

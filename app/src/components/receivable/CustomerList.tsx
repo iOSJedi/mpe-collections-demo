@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { CustomerSummary } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { apiFetch } from '@/lib/api'
 
 const TYPE_LABELS: Record<string, string> = {
   TENANT: 'Tenant',
@@ -58,7 +59,7 @@ export function CustomerList() {
       if (search) params.set('search', search)
       params.set('limit', '50')
 
-      const res = await fetch(`/api/receivable?${params.toString()}`)
+      const res = await apiFetch(`/api/receivable?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load customers')
       const data: CustomerSummary[] = await res.json()
       setCustomers(data)

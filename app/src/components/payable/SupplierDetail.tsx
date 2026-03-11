@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SupplierDetail as SupplierDetailType } from '@/types'
+import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const TYPE_BADGE: Record<string, string> = {
@@ -65,7 +66,7 @@ export function SupplierDetail({ supplierId }: Props) {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/payable/${supplierId}`)
+        const res = await apiFetch(`/api/payable/${supplierId}`)
         if (!res.ok) throw new Error('Failed to load supplier')
         const data: SupplierDetailType = await res.json()
         setSupplier(data)

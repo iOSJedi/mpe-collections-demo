@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch } from '@/store'
 import { setSelectedInvoice, setActiveTab } from '@/store/slices/emulatorSlice'
+import { apiFetch } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 
 interface Invoice {
@@ -58,7 +59,7 @@ export function EmulatorInvoices({ customerId }: EmulatorInvoicesProps) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetch(`/api/invoices?customerId=${customerId}`)
+    apiFetch(`/api/invoices?customerId=${customerId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch invoices')
         return res.json()

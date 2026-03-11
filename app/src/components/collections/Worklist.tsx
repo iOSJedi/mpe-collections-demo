@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { WorklistItem } from '@/types'
+import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const RISK_BADGE: Record<string, string> = {
@@ -54,7 +55,7 @@ export function Worklist() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/collections/worklist')
+      const res = await apiFetch('/api/collections/worklist')
       if (!res.ok) throw new Error('Failed to load worklist')
       const data: WorklistItem[] = await res.json()
       setItems(data)

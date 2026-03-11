@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SupplierSummary } from '@/types'
+import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const TYPE_BADGE: Record<string, string> = {
@@ -49,7 +50,7 @@ export function SupplierList() {
       if (search) params.set('search', search)
       params.set('limit', '50')
 
-      const res = await fetch(`/api/payable?${params.toString()}`)
+      const res = await apiFetch(`/api/payable?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load suppliers')
       const data: SupplierSummary[] = await res.json()
       setSuppliers(data)

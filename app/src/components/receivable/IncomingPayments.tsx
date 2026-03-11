@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { PaymentSummary } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { apiFetch } from '@/lib/api'
 
 type PaymentRecord = PaymentSummary & { customer_name: string }
 
@@ -60,7 +61,7 @@ export function IncomingPayments() {
       if (search) params.set('search', search)
       params.set('limit', '50')
 
-      const res = await fetch(`/api/receivable/payments?${params.toString()}`)
+      const res = await apiFetch(`/api/receivable/payments?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load payments')
       const data: PaymentRecord[] = await res.json()
       setPayments(data)

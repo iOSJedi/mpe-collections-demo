@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { EscalationRecord } from '@/types'
+import { apiFetch } from '@/lib/api'
 
 interface EscalationReviewProps {
   escalation: EscalationRecord
@@ -13,7 +14,7 @@ async function patchEscalation(
   id: number,
   body: { status: 'RESOLVED' | 'DISMISSED'; resolution_notes: string }
 ): Promise<EscalationRecord> {
-  const res = await fetch(`/api/escalations/${id}`, {
+  const res = await apiFetch(`/api/escalations/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

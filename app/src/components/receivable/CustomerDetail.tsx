@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CustomerDetail as CustomerDetailType, ContractSummary, InvoiceSummary, PaymentSummary } from '@/types'
+import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 // ─── Badge helpers ─────────────────────────────────────────────────────────
@@ -247,7 +248,7 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
     if (!customerId || isNaN(customerId)) return
     setLoading(true)
     setError(null)
-    fetch(`/api/receivable/${customerId}`)
+    apiFetch(`/api/receivable/${customerId}`)
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))

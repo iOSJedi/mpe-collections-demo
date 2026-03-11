@@ -9,6 +9,7 @@ import {
   setActiveTab,
 } from '@/store/slices/emulatorSlice'
 import type { CustomerSummary } from '@/types'
+import { apiFetch } from '@/lib/api'
 import { EmulatorInvoices } from './EmulatorInvoices'
 import { EmulatorQR } from './EmulatorQR'
 import { EmulatorUpload } from './EmulatorUpload'
@@ -42,10 +43,10 @@ export function CustomerEmulator() {
   // Fetch customers once on mount
   const fetchCustomers = useCallback(() => {
     setCustomersLoading(true)
-    fetch('/api/receivable?limit=200')
+    apiFetch('/api/receivable?limit=200')
       .then((res) => res.json())
-      .then((data: CustomerSummary[]) => {
-        setCustomers(data)
+      .then((data) => {
+        setCustomers(Array.isArray(data) ? data : [])
         setCustomersLoading(false)
       })
       .catch(() => setCustomersLoading(false))

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { CustomerSummary, CustomerDetail, PaymentSummary } from '@/types'
+import { apiFetch } from '@/lib/api'
 
 interface ReceivableState {
   customers: CustomerSummary[]
@@ -29,7 +30,7 @@ export const fetchCustomers = createAsyncThunk(
 export const fetchCustomerDetail = createAsyncThunk(
   'receivable/fetchCustomerDetail',
   async (id: number, { rejectWithValue }) => {
-    const res = await fetch(`/api/receivable/${id}`)
+    const res = await apiFetch(`/api/receivable/${id}`)
     if (!res.ok) return rejectWithValue('Failed to fetch customer detail')
     return res.json() as Promise<CustomerDetail>
   }

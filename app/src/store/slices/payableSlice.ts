@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { SupplierSummary, SupplierDetail, ThreeWayMatchRow } from '@/types'
+import { apiFetch } from '@/lib/api'
 
 interface PayableState {
   suppliers: SupplierSummary[]
@@ -29,7 +30,7 @@ export const fetchSuppliers = createAsyncThunk(
 export const fetchSupplierDetail = createAsyncThunk(
   'payable/fetchSupplierDetail',
   async (id: number, { rejectWithValue }) => {
-    const res = await fetch(`/api/payable/${id}`)
+    const res = await apiFetch(`/api/payable/${id}`)
     if (!res.ok) return rejectWithValue('Failed to fetch supplier detail')
     return res.json() as Promise<SupplierDetail>
   }

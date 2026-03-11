@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { EscalationRecord } from '@/types'
 import { EscalationReview } from './EscalationReview'
+import { apiFetch } from '@/lib/api'
 
 const STATUS_BADGE: Record<string, string> = {
   OPEN: 'bg-red-100 text-red-800',
@@ -54,7 +55,7 @@ export function EscalationQueue() {
     try {
       const params = new URLSearchParams()
       if (statusFilter) params.set('status', statusFilter)
-      const res = await fetch(`/api/escalations?${params.toString()}`)
+      const res = await apiFetch(`/api/escalations?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load escalations')
       const data: EscalationRecord[] = await res.json()
       setEscalations(data)
