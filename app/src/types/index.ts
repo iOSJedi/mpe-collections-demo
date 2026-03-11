@@ -213,12 +213,14 @@ export interface EscalationRecord {
   escalation_id: number
   document_id: number
   customer_name: string
+  file_name: string
   invoice_number: string | null
   type: string
   description: string
   ai_analysis: Record<string, unknown> | null
   status: string
   assigned_to: string | null
+  resolution_notes: string | null
   created_at: string
   resolved_at: string | null
 }

@@ -10,15 +10,18 @@ import {
   User as FirebaseUser,
   Auth,
 } from 'firebase/auth'
+import { getDatabase, Database } from 'firebase/database'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
 }
 
 let app: FirebaseApp
 let auth: Auth
+let rtdb: Database | null = null
 
 if (typeof window !== 'undefined') {
   if (!getApps().length) {
@@ -27,6 +30,14 @@ if (typeof window !== 'undefined') {
     app = getApps()[0]
   }
   auth = getAuth(app)
+  // Only initialise RTDB if a databaseURL is configured
+  if (firebaseConfig.databaseURL) {
+    try {
+      rtdb = getDatabase(app)
+    } catch {
+      rtdb = null
+    }
+  }
 }
 
 const googleProvider = new GoogleAuthProvider()
@@ -50,5 +61,5 @@ export function onAuthChange(callback: (user: FirebaseUser | null) => void): () 
   return onAuthStateChanged(auth, callback)
 }
 
-export { app, auth }
+export { app, auth, rtdb }
 export type { FirebaseUser }

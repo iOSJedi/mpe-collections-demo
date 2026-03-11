@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard,
   ArrowDownToLine,
@@ -17,6 +17,8 @@ import { useAppDispatch, useAppSelector } from '@/store'
 import { navigate } from '@/store/slices/navSlice'
 import { NavSpace, NavPage } from '@/types'
 import { cn } from '@/lib/utils'
+import { rtdb } from '@/lib/firebase'
+import { ref, onValue, off } from 'firebase/database'
 
 interface SubPage {
   page: NavPage
@@ -87,6 +89,24 @@ export function Sidebar() {
 
   const [collapsed, setCollapsed] = useState(false)
   const [expandedSpaces, setExpandedSpaces] = useState<Set<NavSpace>>(new Set([activeSpace]))
+  const [hasOpenEscalations, setHasOpenEscalations] = useState(false)
+
+  // Subscribe to Firebase RTDB for open escalation notifications
+  useEffect(() => {
+    if (!rtdb) return
+    const escalationsRef = ref(rtdb, 'collections/escalations')
+    const handleValue = (snapshot: import('firebase/database').DataSnapshot) => {
+      if (!snapshot.exists()) {
+        setHasOpenEscalations(false)
+        return
+      }
+      const data = snapshot.val() as Record<string, { status?: string }>
+      const hasOpen = Object.values(data).some(e => e?.status === 'OPEN')
+      setHasOpenEscalations(hasOpen)
+    }
+    onValue(escalationsRef, handleValue)
+    return () => off(escalationsRef, 'value', handleValue)
+  }, [])
 
   const handleSpaceClick = (spaceConfig: SpaceConfig) => {
     if (spaceConfig.href) {
@@ -167,10 +187,16 @@ export function Sidebar() {
                   />
                 )}
 
-                <Icon
-                  className="w-4 h-4 shrink-0"
-                  style={{ color: isActiveSpace ? '#C5A930' : 'rgba(255,255,255,0.75)' }}
-                />
+                {/* Icon with optional escalation badge dot */}
+                <span className="relative shrink-0">
+                  <Icon
+                    className="w-4 h-4"
+                    style={{ color: isActiveSpace ? '#C5A930' : 'rgba(255,255,255,0.75)' }}
+                  />
+                  {spaceConfig.space === 'collections' && hasOpenEscalations && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  )}
+                </span>
 
                 {!collapsed && (
                   <>
