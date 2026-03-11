@@ -1,28 +1,32 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { NavView } from '@/types'
+import { NavSpace, NavPage } from '@/types'
 
 interface NavState {
-  activeView: NavView
-  sidebarCollapsed: boolean
+  activeSpace: NavSpace
+  activePage: NavPage
 }
 
 const initialState: NavState = {
-  activeView: 'dashboard',
-  sidebarCollapsed: false,
+  activeSpace: 'overview',
+  activePage: 'overview',
 }
 
 const navSlice = createSlice({
   name: 'nav',
   initialState,
   reducers: {
-    setActiveView(state, action: PayloadAction<NavView>) {
-      state.activeView = action.payload
+    setActiveSpace(state, action: PayloadAction<NavSpace>) {
+      state.activeSpace = action.payload
     },
-    toggleSidebar(state) {
-      state.sidebarCollapsed = !state.sidebarCollapsed
+    setActivePage(state, action: PayloadAction<NavPage>) {
+      state.activePage = action.payload
+    },
+    navigate(state, action: PayloadAction<{ space: NavSpace; page: NavPage }>) {
+      state.activeSpace = action.payload.space
+      state.activePage = action.payload.page
     },
   },
 })
 
-export const { setActiveView, toggleSidebar } = navSlice.actions
+export const { setActiveSpace, setActivePage, navigate } = navSlice.actions
 export default navSlice.reducer
