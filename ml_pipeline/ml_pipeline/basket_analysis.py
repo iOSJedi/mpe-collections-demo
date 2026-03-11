@@ -1,245 +1,148 @@
 """
-Basket Analysis using FP-Growth algorithm.
+Payment Patterns analysis for AR customers.
 
-Finds product associations (frequently bought together) by analyzing
-transaction baskets. Runs separately for retail and wholesale transactions.
-Uses mlxtend's FP-Growth for frequent itemset mining and association rule generation.
+Computes per-customer payment behaviour metrics from the invoices and
+incoming_payments tables:
+  - avg_days_to_pay: average days from invoice issue date to payment date
+  - preferred_method: mode of payment_method across all payments
+  - typical_payment_day: mode of day-of-month of payment_date
+  - partial_payment_rate: fraction of payments where amount < invoice amount
+
+Results are written to the payment_patterns table.
 """
 
 import pandas as pd
-from mlxtend.frequent_patterns import fpgrowth
-from mlxtend.frequent_patterns import association_rules
-from .db import get_connection, execute_query
-import psycopg2.extras
+import numpy as np
+from .db import execute_query, upsert_payment_patterns
 
 
-def _build_basket_query(transaction_type, params):
-    """Build SQL query to fetch transaction baskets."""
-    conditions = ["t.transaction_type = %s"]
-    query_params = [transaction_type]
-
-    if params.get('branch_id'):
-        conditions.append("t.branch_id = %s")
-        query_params.append(params['branch_id'])
-
-    if params.get('date_from'):
-        conditions.append("t.transaction_date >= %s")
-        query_params.append(params['date_from'])
-
-    if params.get('date_to'):
-        conditions.append("t.transaction_date <= %s")
-        query_params.append(params['date_to'])
-
-    where_clause = " AND ".join(conditions)
-
-    query = f"""
-        SELECT
-            t.transaction_id,
-            ti.product_id
-        FROM transactions t
-        JOIN transaction_items ti ON t.transaction_id = ti.transaction_id
-        WHERE {where_clause}
+def _fetch_payment_data():
     """
-    return query, query_params
-
-
-def _run_fpgrowth_for_type(transaction_type, params):
-    """Run FP-Growth analysis for a specific transaction type."""
-    query, query_params = _build_basket_query(transaction_type, params)
-    rows = execute_query(query, query_params)
-
-    if not rows or len(rows) < 10:
-        return [], 0
+    Fetch raw payment data joined to invoice info for all customers.
+    """
+    query = """
+        SELECT
+            i.customer_id,
+            ip.payment_id,
+            ip.payment_date,
+            ip.payment_method,
+            CAST(ip.amount AS numeric)    AS payment_amount,
+            CAST(i.amount AS numeric)     AS invoice_amount,
+            i.issue_date
+        FROM incoming_payments ip
+        JOIN invoices i ON ip.invoice_id = i.invoice_id
+        WHERE ip.payment_date IS NOT NULL
+          AND i.customer_id IS NOT NULL
+        ORDER BY i.customer_id, ip.payment_date
+    """
+    rows = execute_query(query)
+    if not rows:
+        return pd.DataFrame()
 
     df = pd.DataFrame(rows)
+    df['payment_date'] = pd.to_datetime(df['payment_date'])
+    df['issue_date'] = pd.to_datetime(df['issue_date'])
+    df['payment_amount'] = pd.to_numeric(df['payment_amount'], errors='coerce').fillna(0)
+    df['invoice_amount'] = pd.to_numeric(df['invoice_amount'], errors='coerce').fillna(0)
 
-    # Create basket matrix: rows=transactions, columns=products, values=True/False
-    basket = df.groupby(['transaction_id', 'product_id']).size().unstack(fill_value=0)
-    basket = basket.applymap(lambda x: True if x > 0 else False)
+    return df
 
-    num_baskets = len(basket)
 
-    # Need at least 50 baskets and 2 products for meaningful analysis
-    if num_baskets < 50 or basket.shape[1] < 2:
-        return [], num_baskets
+def _mode_or_none(series):
+    """Return the mode of a series, or None if empty."""
+    if series.empty:
+        return None
+    mode = series.mode()
+    return mode.iloc[0] if not mode.empty else None
 
-    # Adjust min_support based on basket count — smaller datasets need higher support
-    min_support = 0.02
-    if num_baskets < 200:
-        min_support = 0.05
-    elif num_baskets < 500:
-        min_support = 0.03
 
-    try:
-        frequent_itemsets = fpgrowth(basket, min_support=min_support, use_colnames=True)
-    except Exception:
-        return [], num_baskets
+def _compute_patterns(df):
+    """
+    Aggregate per-customer payment pattern metrics.
+    Returns a DataFrame with one row per customer_id.
+    """
+    results = []
 
-    if frequent_itemsets.empty:
-        return [], num_baskets
+    for customer_id, group in df.groupby('customer_id'):
+        # avg_days_to_pay
+        days_to_pay = (group['payment_date'] - group['issue_date']).dt.days
+        avg_days_to_pay = float(days_to_pay.mean()) if not days_to_pay.empty else None
 
-    # Filter to only pairs (2-itemsets)
-    frequent_itemsets = frequent_itemsets[
-        frequent_itemsets['itemsets'].apply(lambda x: len(x) == 2)
-    ]
+        # preferred_method
+        preferred_method = _mode_or_none(group['payment_method'])
 
-    if frequent_itemsets.empty:
-        return [], num_baskets
+        # typical_payment_day (day-of-month)
+        payment_days = group['payment_date'].dt.day
+        typical_payment_day = int(_mode_or_none(payment_days)) if not payment_days.empty else None
 
-    try:
-        rules = association_rules(
-            frequent_itemsets,
-            metric="lift",
-            min_threshold=1.5,
-            num_itemsets=len(basket)
-        )
-    except Exception:
-        return [], num_baskets
-
-    # Filter by confidence
-    rules = rules[rules['confidence'] >= 0.25]
-
-    if rules.empty:
-        return [], num_baskets
-
-    # Build association records
-    associations = []
-    seen_pairs = set()
-
-    for _, rule in rules.iterrows():
-        antecedent = list(rule['antecedents'])
-        consequent = list(rule['consequents'])
-
-        # Only handle single-item antecedent -> single-item consequent
-        if len(antecedent) != 1 or len(consequent) != 1:
-            continue
-
-        product_a = antecedent[0]
-        product_b = consequent[0]
-
-        # Normalize pair ordering to avoid duplicates
-        pair_key = tuple(sorted([product_a, product_b]))
-        if pair_key in seen_pairs:
-            # Update confidence for B->A direction
-            for assoc in associations:
-                if (assoc['product_a_id'] == pair_key[0] and
-                        assoc['product_b_id'] == pair_key[1]):
-                    # Determine which direction this rule represents
-                    if product_a == pair_key[0]:
-                        assoc['confidence_a_to_b'] = float(rule['confidence'])
-                    else:
-                        assoc['confidence_b_to_a'] = float(rule['confidence'])
-                    break
-            continue
-
-        seen_pairs.add(pair_key)
-
-        # Determine direction-specific confidence values
-        if product_a == pair_key[0]:
-            conf_a_to_b = float(rule['confidence'])
-            conf_b_to_a = 0.0
+        # partial_payment_rate
+        valid = group[group['invoice_amount'] > 0]
+        if not valid.empty:
+            partial_mask = valid['payment_amount'] < valid['invoice_amount']
+            partial_payment_rate = float(partial_mask.sum() / len(valid))
         else:
-            conf_a_to_b = 0.0
-            conf_b_to_a = float(rule['confidence'])
+            partial_payment_rate = 0.0
 
-        associations.append({
-            'product_a_id': pair_key[0],
-            'product_b_id': pair_key[1],
-            'support': float(rule['support']),
-            'confidence_a_to_b': conf_a_to_b,
-            'confidence_b_to_a': conf_b_to_a,
-            'lift': float(rule['lift']),
-            'transaction_type': transaction_type,
-            'branch_id': params.get('branch_id'),
+        results.append({
+            'customer_id': customer_id,
+            'avg_days_to_pay': avg_days_to_pay,
+            'preferred_method': preferred_method,
+            'typical_payment_day': typical_payment_day,
+            'partial_payment_rate': partial_payment_rate,
         })
 
-    return associations, num_baskets
-
-
-def _upsert_associations(associations):
-    """Delete existing associations for the same scope and insert new ones."""
-    if not associations:
-        return
-
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            # Group by transaction_type + branch_id and delete existing
-            scopes = set()
-            for a in associations:
-                scopes.add((a['transaction_type'], a['branch_id']))
-
-            for txn_type, branch_id in scopes:
-                if branch_id:
-                    cur.execute(
-                        "DELETE FROM product_associations WHERE transaction_type = %s AND branch_id = %s",
-                        (txn_type, branch_id)
-                    )
-                else:
-                    cur.execute(
-                        "DELETE FROM product_associations WHERE transaction_type = %s AND branch_id IS NULL",
-                        (txn_type,)
-                    )
-
-            # Bulk insert new associations
-            values = [
-                (
-                    a['product_a_id'], a['product_b_id'], a['support'],
-                    a['confidence_a_to_b'], a['confidence_b_to_a'], a['lift'],
-                    a['transaction_type'], a['branch_id']
-                )
-                for a in associations
-            ]
-
-            psycopg2.extras.execute_values(
-                cur,
-                """
-                INSERT INTO product_associations
-                    (product_a_id, product_b_id, support, confidence_a_to_b,
-                     confidence_b_to_a, lift, transaction_type, branch_id, updated_at)
-                VALUES %s
-                """,
-                values,
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, NOW())"
-            )
-
-            conn.commit()
-    finally:
-        conn.close()
+    return pd.DataFrame(results)
 
 
 def run_basket_analysis(params):
     """
-    Run FP-Growth basket analysis for both retail and wholesale transactions.
+    Compute and store payment patterns for all customers.
 
     Args:
-        params: dict with optional keys: branch_id, date_from, date_to
+        params: dict (reserved for future filters)
 
     Returns:
-        dict with 'summary' key describing results
+        dict with 'summary' describing results
     """
     try:
-        all_associations = []
-        total_baskets = 0
+        df = _fetch_payment_data()
 
-        for txn_type in ['retail', 'wholesale']:
-            associations, num_baskets = _run_fpgrowth_for_type(txn_type, params)
-            all_associations.extend(associations)
-            total_baskets += num_baskets
+        if df.empty:
+            return {'summary': 'No payment data found for pattern analysis'}
 
-        _upsert_associations(all_associations)
+        patterns = _compute_patterns(df)
+
+        if patterns.empty:
+            return {'summary': 'No patterns could be computed from payment data'}
+
+        rows = [
+            (
+                row['customer_id'],
+                float(row['avg_days_to_pay']) if row['avg_days_to_pay'] is not None else None,
+                row['preferred_method'],
+                row['typical_payment_day'],
+                float(row['partial_payment_rate']),
+            )
+            for _, row in patterns.iterrows()
+        ]
+        upsert_payment_patterns(rows)
+
+        avg_days = patterns['avg_days_to_pay'].mean()
+        partial_rate = patterns['partial_payment_rate'].mean()
 
         return {
             'summary': (
-                f"Found {len(all_associations)} significant product associations "
-                f"for {total_baskets} baskets"
+                f"Computed payment patterns for {len(patterns)} customers. "
+                f"Average days-to-pay: {avg_days:.1f}, "
+                f"Average partial payment rate: {partial_rate:.1%}"
             ),
-            'association_count': len(all_associations),
-            'basket_count': total_baskets,
+            'customer_count': len(patterns),
+            'avg_days_to_pay': round(float(avg_days), 2) if not np.isnan(avg_days) else None,
+            'avg_partial_payment_rate': round(float(partial_rate), 4),
         }
 
     except Exception as e:
         return {
-            'summary': f"Basket analysis failed: {str(e)}",
+            'summary': f"Payment pattern analysis failed: {str(e)}",
             'error': str(e),
         }

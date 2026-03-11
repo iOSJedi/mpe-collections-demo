@@ -1,213 +1,162 @@
 """
-Churn Scoring using Logistic Regression.
+Delinquency Scoring for AR customers.
 
-Defines churn as: 0 purchases in last 30 days but >= 2 in the 90 days before that.
-Features include days since last purchase, average gap between purchases,
-frequency change, basket size change, category diversity, and payment method diversity.
-Scores all active customers and maps probability to risk levels.
+Computes a 0-1 delinquency score per customer using four features:
+  - avg_days_overdue: average days past due date across all invoices
+  - missed_payment_count: invoices still in OVERDUE status
+  - payment_trend: 'declining' | 'stable' | 'improving' (last 3 months vs prior)
+  - outstanding_balance_ratio: total balance_remaining / total invoice amount
+
+Score is produced by a logistic-like weighted formula. Customers are bucketed:
+  LOW (0–0.25), MEDIUM (0.25–0.5), HIGH (0.5–0.75), CRITICAL (0.75–1.0).
+
+Results are written to the delinquency_scores table.
 """
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
-from .db import get_connection, execute_query
-import psycopg2.extras
+from .db import execute_query, upsert_delinquency_scores
 
 
-FEATURE_NAMES = [
-    'days_since_last',
-    'avg_days_between',
-    'frequency_change',
-    'basket_change',
-    'unique_categories',
-    'payment_method_diversity',
-]
+# Feature weights for the delinquency score formula (must sum to 1.0)
+FEATURE_WEIGHTS = {
+    'avg_days_overdue_norm': 0.35,
+    'missed_payment_norm': 0.25,
+    'trend_score': 0.20,
+    'balance_ratio': 0.20,
+}
 
 RISK_FACTOR_LABELS = {
-    'days_since_last': 'Long time since last purchase',
-    'avg_days_between': 'Increasing gap between purchases',
-    'frequency_change': 'Declining purchase frequency',
-    'basket_change': 'Shrinking basket size',
-    'unique_categories': 'Low category engagement',
-    'payment_method_diversity': 'Limited payment flexibility',
+    'avg_days_overdue_norm': 'Consistently late payments',
+    'missed_payment_norm': 'Multiple overdue invoices',
+    'trend_score': 'Worsening payment trend',
+    'balance_ratio': 'High outstanding balance ratio',
 }
 
 
-def _fetch_churn_features():
+def _fetch_delinquency_features():
     """
-    Fetch per-customer features for churn prediction.
-    Returns a DataFrame with customer_id, all features, and a churn label.
+    Fetch per-customer features for delinquency scoring from invoices and
+    incoming_payments tables.
     """
     query = """
-        WITH customer_stats AS (
+        WITH invoice_stats AS (
             SELECT
-                c.customer_id,
-                -- Days since last transaction
-                EXTRACT(EPOCH FROM (NOW() - MAX(t.transaction_date))) / 86400.0
-                    AS days_since_last,
-                -- Average days between transactions
-                CASE
-                    WHEN COUNT(DISTINCT t.transaction_id) > 1 THEN
-                        EXTRACT(EPOCH FROM (MAX(t.transaction_date) - MIN(t.transaction_date)))
-                        / NULLIF(COUNT(DISTINCT t.transaction_id) - 1, 0) / 86400.0
-                    ELSE 999
-                END AS avg_days_between,
-                -- Frequency in recent 30 days
-                COUNT(DISTINCT CASE
-                    WHEN t.transaction_date >= NOW() - INTERVAL '30 days'
-                    THEN t.transaction_id END) AS freq_recent_30,
-                -- Frequency in 31-120 days ago (the 90 days before last 30)
-                COUNT(DISTINCT CASE
-                    WHEN t.transaction_date >= NOW() - INTERVAL '120 days'
-                     AND t.transaction_date < NOW() - INTERVAL '30 days'
-                    THEN t.transaction_id END) AS freq_prior_90,
-                -- Frequency change: (recent 30d rate) vs (prior 90d rate, normalized to 30d)
-                CASE
-                    WHEN COUNT(DISTINCT CASE
-                        WHEN t.transaction_date >= NOW() - INTERVAL '120 days'
-                         AND t.transaction_date < NOW() - INTERVAL '30 days'
-                        THEN t.transaction_id END) > 0
-                    THEN (
-                        COUNT(DISTINCT CASE
-                            WHEN t.transaction_date >= NOW() - INTERVAL '30 days'
-                            THEN t.transaction_id END)::float
-                        / (COUNT(DISTINCT CASE
-                            WHEN t.transaction_date >= NOW() - INTERVAL '120 days'
-                             AND t.transaction_date < NOW() - INTERVAL '30 days'
-                            THEN t.transaction_id END)::float / 3.0)
-                    ) - 1.0
-                    ELSE 0
-                END AS frequency_change,
-                -- Average basket size change
-                CASE
-                    WHEN COALESCE(AVG(CASE
-                        WHEN t.transaction_date >= NOW() - INTERVAL '120 days'
-                         AND t.transaction_date < NOW() - INTERVAL '30 days'
-                        THEN CAST(t.total_amount AS numeric) END), 0) > 0
-                    THEN (
-                        COALESCE(AVG(CASE
-                            WHEN t.transaction_date >= NOW() - INTERVAL '30 days'
-                            THEN CAST(t.total_amount AS numeric) END), 0)
-                        / COALESCE(AVG(CASE
-                            WHEN t.transaction_date >= NOW() - INTERVAL '120 days'
-                             AND t.transaction_date < NOW() - INTERVAL '30 days'
-                            THEN CAST(t.total_amount AS numeric) END), 1)
-                    ) - 1.0
-                    ELSE 0
-                END AS basket_change,
-                -- Unique categories purchased
-                COUNT(DISTINCT p.category) AS unique_categories,
-                -- Payment method diversity
-                COUNT(DISTINCT t.payment_method) AS payment_method_diversity,
-                -- Total transactions in last 6 months
-                COUNT(DISTINCT CASE
-                    WHEN t.transaction_date >= NOW() - INTERVAL '6 months'
-                    THEN t.transaction_id END) AS total_txn_6m
-            FROM customers c
-            JOIN transactions t ON c.customer_id = t.customer_id
-            LEFT JOIN transaction_items ti ON t.transaction_id = ti.transaction_id
-            LEFT JOIN products p ON ti.product_id = p.product_id
-            WHERE c.status = 'active'
-              AND t.transaction_date >= NOW() - INTERVAL '6 months'
-            GROUP BY c.customer_id
+                i.customer_id,
+                -- Average days overdue (days past due_date, 0 if not overdue)
+                AVG(
+                    GREATEST(
+                        EXTRACT(EPOCH FROM (NOW() - i.due_date::timestamp)) / 86400.0,
+                        0
+                    )
+                ) AS avg_days_overdue,
+                -- Number of invoices still in OVERDUE status
+                COUNT(*) FILTER (WHERE i.status = 'OVERDUE') AS missed_payment_count,
+                -- Total balance remaining
+                SUM(CAST(i.balance_remaining AS numeric)) AS total_balance_remaining,
+                -- Total invoice amount
+                SUM(CAST(i.amount AS numeric)) AS total_invoice_amount
+            FROM invoices i
+            WHERE i.customer_id IS NOT NULL
+            GROUP BY i.customer_id
+        ),
+        recent_payments AS (
+            -- Payments in the last 3 months
+            SELECT
+                i.customer_id,
+                COUNT(ip.payment_id) AS payments_recent
+            FROM incoming_payments ip
+            JOIN invoices i ON ip.invoice_id = i.invoice_id
+            WHERE ip.payment_date >= NOW() - INTERVAL '3 months'
+            GROUP BY i.customer_id
+        ),
+        prior_payments AS (
+            -- Payments in the 3 months before that (months 3-6 ago)
+            SELECT
+                i.customer_id,
+                COUNT(ip.payment_id) AS payments_prior
+            FROM incoming_payments ip
+            JOIN invoices i ON ip.invoice_id = i.invoice_id
+            WHERE ip.payment_date >= NOW() - INTERVAL '6 months'
+              AND ip.payment_date < NOW() - INTERVAL '3 months'
+            GROUP BY i.customer_id
         )
         SELECT
-            customer_id,
-            days_since_last,
-            avg_days_between,
-            frequency_change,
-            basket_change,
-            unique_categories,
-            payment_method_diversity,
-            freq_recent_30,
-            freq_prior_90,
-            total_txn_6m,
-            -- Churn label: 0 purchases in last 30 days AND >= 2 in prior 90 days
-            CASE
-                WHEN freq_recent_30 = 0 AND freq_prior_90 >= 2 THEN 1
-                ELSE 0
-            END AS churned
-        FROM customer_stats
-        WHERE total_txn_6m >= 1
+            c.customer_id,
+            COALESCE(s.avg_days_overdue, 0)            AS avg_days_overdue,
+            COALESCE(s.missed_payment_count, 0)        AS missed_payment_count,
+            COALESCE(s.total_balance_remaining, 0)     AS total_balance_remaining,
+            COALESCE(s.total_invoice_amount, 0)        AS total_invoice_amount,
+            COALESCE(rp.payments_recent, 0)            AS payments_recent,
+            COALESCE(pp.payments_prior, 0)             AS payments_prior
+        FROM customers c
+        LEFT JOIN invoice_stats s ON c.customer_id = s.customer_id
+        LEFT JOIN recent_payments rp ON c.customer_id = rp.customer_id
+        LEFT JOIN prior_payments pp ON c.customer_id = pp.customer_id
+        WHERE c.status = 'active'
     """
     rows = execute_query(query)
     if not rows:
         return pd.DataFrame()
 
     df = pd.DataFrame(rows)
-    for col in FEATURE_NAMES + ['churned']:
+    numeric_cols = [
+        'avg_days_overdue', 'missed_payment_count', 'total_balance_remaining',
+        'total_invoice_amount', 'payments_recent', 'payments_prior',
+    ]
+    for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
     return df
 
 
-def _determine_risk_level(prob):
-    """Map churn probability to risk level string."""
-    if prob < 0.3:
-        return 'low'
-    elif prob < 0.5:
-        return 'medium'
-    elif prob < 0.7:
-        return 'high'
+def _compute_payment_trend(row):
+    """
+    Determine payment trend based on payment counts in the last vs prior 3 months.
+    Returns 'improving', 'stable', or 'declining'.
+    """
+    recent = row['payments_recent']
+    prior = row['payments_prior']
+
+    if prior == 0 and recent == 0:
+        return 'stable'
+    if prior == 0:
+        return 'improving'
+
+    ratio = recent / prior
+    if ratio >= 1.2:
+        return 'improving'
+    elif ratio <= 0.8:
+        return 'declining'
     else:
-        return 'critical'
+        return 'stable'
 
 
-def _top_risk_factor(features_row, coefficients):
-    """
-    Determine the top risk factor for a customer based on feature values
-    weighted by model coefficients.
-    """
-    weighted = np.abs(features_row * coefficients)
-    top_idx = np.argmax(weighted)
-    return RISK_FACTOR_LABELS.get(FEATURE_NAMES[top_idx], FEATURE_NAMES[top_idx])
+def _trend_to_score(trend):
+    """Map trend label to a numeric contribution (higher = worse)."""
+    return {'declining': 1.0, 'stable': 0.5, 'improving': 0.0}.get(trend, 0.5)
 
 
-def _upsert_churn_scores(df):
-    """Write churn scores to the database."""
-    if df.empty:
-        return
+def _logistic(x):
+    """Squash a raw weighted sum through a logistic function."""
+    return 1.0 / (1.0 + np.exp(-6.0 * (x - 0.5)))
 
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM churn_scores")
 
-            values = [
-                (
-                    row['customer_id'],
-                    float(row['churn_probability']),
-                    row['risk_level'],
-                    int(row['days_since_last']),
-                    float(row['frequency_change']),
-                    float(row['basket_change']),
-                    row['top_risk_factor'],
-                )
-                for _, row in df.iterrows()
-            ]
-
-            psycopg2.extras.execute_values(
-                cur,
-                """
-                INSERT INTO churn_scores
-                    (customer_id, churn_probability, risk_level, days_since_last,
-                     frequency_change, basket_change, top_risk_factor, updated_at)
-                VALUES %s
-                """,
-                values,
-                template="(%s, %s, %s, %s, %s, %s, %s, NOW())"
-            )
-
-            conn.commit()
-    finally:
-        conn.close()
+def _risk_bucket(score):
+    """Map 0-1 score to LOW / MEDIUM / HIGH / CRITICAL bucket."""
+    if score < 0.25:
+        return 'LOW'
+    elif score < 0.50:
+        return 'MEDIUM'
+    elif score < 0.75:
+        return 'HIGH'
+    else:
+        return 'CRITICAL'
 
 
 def run_churn_scoring(params):
     """
-    Run logistic regression churn scoring for all active customers.
+    Run delinquency scoring for all active customers.
 
     Args:
         params: dict (reserved for future use)
@@ -216,86 +165,78 @@ def run_churn_scoring(params):
         dict with 'summary' describing results and risk distribution
     """
     try:
-        df = _fetch_churn_features()
+        df = _fetch_delinquency_features()
 
-        if df.empty or len(df) < 20:
-            return {
-                'summary': 'Not enough customer data for churn scoring (need >= 20 customers)',
-            }
+        if df.empty:
+            return {'summary': 'No customer data found for delinquency scoring'}
 
-        X = df[FEATURE_NAMES].values
-        y = df['churned'].values
+        # --- Normalize features ---
+        # avg_days_overdue: cap at 90 days
+        df['avg_days_overdue_norm'] = np.clip(df['avg_days_overdue'] / 90.0, 0.0, 1.0)
 
-        # Check if we have both classes
-        unique_labels = np.unique(y)
-        if len(unique_labels) < 2:
-            # If no churn observed, assign low probability to all
-            df['churn_probability'] = 0.1
-            df['risk_level'] = 'low'
-            df['top_risk_factor'] = 'No churn patterns detected'
-            _upsert_churn_scores(df)
-            return {
-                'summary': (
-                    f"Scored {len(df)} customers. No churn patterns detected — "
-                    f"all customers assigned low risk."
-                ),
-                'customer_count': len(df),
-            }
+        # missed_payment_count: cap at 10 invoices
+        df['missed_payment_norm'] = np.clip(df['missed_payment_count'] / 10.0, 0.0, 1.0)
 
-        # Scale features
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        # payment_trend
+        df['payment_trend'] = df.apply(_compute_payment_trend, axis=1)
+        df['trend_score'] = df['payment_trend'].apply(_trend_to_score)
 
-        # Train/test split for validation
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y, test_size=0.2, random_state=42, stratify=y
+        # outstanding_balance_ratio
+        df['balance_ratio'] = np.where(
+            df['total_invoice_amount'] > 0,
+            np.clip(df['total_balance_remaining'] / df['total_invoice_amount'], 0.0, 1.0),
+            0.0
         )
 
-        # Train logistic regression
-        model = LogisticRegression(
-            random_state=42,
-            max_iter=1000,
-            class_weight='balanced',  # Handle class imbalance
+        # --- Compute weighted delinquency score ---
+        raw_score = (
+            FEATURE_WEIGHTS['avg_days_overdue_norm'] * df['avg_days_overdue_norm'] +
+            FEATURE_WEIGHTS['missed_payment_norm'] * df['missed_payment_norm'] +
+            FEATURE_WEIGHTS['trend_score'] * df['trend_score'] +
+            FEATURE_WEIGHTS['balance_ratio'] * df['balance_ratio']
         )
-        model.fit(X_train, y_train)
+        df['score'] = raw_score.apply(_logistic)
+        df['risk_bucket'] = df['score'].apply(_risk_bucket)
 
-        # Score ALL customers (not just test set)
-        X_all_scaled = scaler.transform(X[: len(df)])
-        probabilities = model.predict_proba(X_all_scaled)[:, 1]
+        # --- Identify top risk factor per customer ---
+        factor_df = pd.DataFrame({
+            'avg_days_overdue_norm': df['avg_days_overdue_norm'] * FEATURE_WEIGHTS['avg_days_overdue_norm'],
+            'missed_payment_norm': df['missed_payment_norm'] * FEATURE_WEIGHTS['missed_payment_norm'],
+            'trend_score': df['trend_score'] * FEATURE_WEIGHTS['trend_score'],
+            'balance_ratio': df['balance_ratio'] * FEATURE_WEIGHTS['balance_ratio'],
+        })
+        df['top_risk_factor'] = factor_df.idxmax(axis=1).map(RISK_FACTOR_LABELS)
 
-        df['churn_probability'] = probabilities
-        df['risk_level'] = df['churn_probability'].apply(_determine_risk_level)
+        # --- Write to database ---
+        rows = [
+            (
+                row['customer_id'],
+                float(row['score']),
+                row['risk_bucket'],
+                float(row['avg_days_overdue']),
+                int(row['missed_payment_count']),
+                row['payment_trend'],
+                float(row['balance_ratio']),
+                row['top_risk_factor'],
+            )
+            for _, row in df.iterrows()
+        ]
+        upsert_delinquency_scores(rows)
 
-        # Determine top risk factor per customer
-        coefficients = model.coef_[0]
-        df['top_risk_factor'] = df.apply(
-            lambda row: _top_risk_factor(
-                row[FEATURE_NAMES].values.astype(float), coefficients
-            ),
-            axis=1,
-        )
-
-        # Write to database
-        _upsert_churn_scores(df)
-
-        # Calculate test accuracy for summary
-        test_accuracy = model.score(X_test, y_test)
-        risk_distribution = df['risk_level'].value_counts().to_dict()
+        risk_distribution = df['risk_bucket'].value_counts().to_dict()
         dist_str = ", ".join(f"{k}: {v}" for k, v in risk_distribution.items())
 
         return {
             'summary': (
-                f"Scored {len(df)} customers for churn risk "
-                f"(model accuracy: {test_accuracy:.1%}). "
+                f"Scored {len(df)} customers for delinquency risk. "
                 f"Risk distribution: {dist_str}"
             ),
             'customer_count': len(df),
-            'model_accuracy': float(test_accuracy),
             'risk_distribution': risk_distribution,
         }
 
     except Exception as e:
         return {
-            'summary': f"Churn scoring failed: {str(e)}",
+            'summary': f"Delinquency scoring failed: {str(e)}",
             'error': str(e),
         }

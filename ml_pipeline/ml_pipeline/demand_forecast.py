@@ -1,315 +1,157 @@
 """
-Demand Forecasting using Facebook Prophet.
+Cash Flow Forecasting for the collections portal.
 
-Forecasts daily sales quantity for the top 50 products by volume and
-all product categories, broken down by branch. Incorporates Philippine
-holidays (Christmas, New Year, Holy Week, All Saints Day, Independence Day).
-Produces 30-day forecasts with confidence intervals.
+Projects monthly inflow (from incoming_payments) and outflow (from
+outgoing_payments) 6 months into the future. Uses a simple time-series
+approach: compute the rolling average of the last N months and project
+it forward. Confidence intervals are ±20% of the forecast value.
+
+Results are written to the cash_flow_forecasts table.
 """
 
-from prophet import Prophet
 import pandas as pd
 import numpy as np
-from .db import get_connection, execute_query
-import psycopg2.extras
-import logging
-
-# Suppress Prophet's verbose logging
-logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
-logging.getLogger('prophet').setLevel(logging.WARNING)
+from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
+from .db import execute_query, upsert_cash_flow_forecasts
 
 
-def _get_philippine_holidays():
+FORECAST_MONTHS = 6    # how many months ahead to forecast
+LOOKBACK_MONTHS = 6    # how many historical months to average
+
+
+def _fetch_monthly_inflows():
     """
-    Build a DataFrame of Philippine holidays for Prophet.
-    Covers 2024-2027 to ensure training and forecast periods are included.
+    Aggregate incoming_payments by calendar month.
+    Returns a dict {year_month_str: total_amount}.
     """
-    holidays = []
-    for year in range(2024, 2028):
-        holidays.extend([
-            {'holiday': 'christmas_season', 'ds': f'{year}-12-25',
-             'lower_window': -7, 'upper_window': 1},
-            {'holiday': 'new_year', 'ds': f'{year}-01-01',
-             'lower_window': -1, 'upper_window': 1},
-            {'holiday': 'all_saints_day', 'ds': f'{year}-11-01',
-             'lower_window': -1, 'upper_window': 1},
-            {'holiday': 'independence_day', 'ds': f'{year}-06-12',
-             'lower_window': 0, 'upper_window': 0},
-        ])
-
-    # Holy Week (approximate dates — Maundy Thursday + Good Friday)
-    holy_week_dates = {
-        2024: ('2024-03-28', '2024-03-29'),
-        2025: ('2025-04-17', '2025-04-18'),
-        2026: ('2026-04-02', '2026-04-03'),
-        2027: ('2027-03-25', '2027-03-26'),
-    }
-    for year, (thu, fri) in holy_week_dates.items():
-        holidays.append({'holiday': 'holy_week', 'ds': thu,
-                         'lower_window': -1, 'upper_window': 0})
-        holidays.append({'holiday': 'holy_week', 'ds': fri,
-                         'lower_window': 0, 'upper_window': 0})
-
-    return pd.DataFrame(holidays)
-
-
-def _fetch_top_products(limit=50):
-    """Fetch top N products by total quantity sold in last 6 months."""
     query = """
         SELECT
-            ti.product_id,
-            SUM(ti.quantity) AS total_qty
-        FROM transaction_items ti
-        JOIN transactions t ON ti.transaction_id = t.transaction_id
-        WHERE t.transaction_date >= NOW() - INTERVAL '6 months'
-        GROUP BY ti.product_id
-        ORDER BY total_qty DESC
-        LIMIT %s
+            TO_CHAR(payment_date, 'YYYY-MM') AS month,
+            SUM(CAST(amount AS numeric))      AS total
+        FROM incoming_payments
+        WHERE payment_date IS NOT NULL
+          AND payment_date >= NOW() - INTERVAL '%s months'
+        GROUP BY TO_CHAR(payment_date, 'YYYY-MM')
+        ORDER BY month
+    """ % (LOOKBACK_MONTHS + 1)
+
+    rows = execute_query(query)
+    if not rows:
+        return {}
+
+    return {row['month']: float(row['total'] or 0) for row in rows}
+
+
+def _fetch_monthly_outflows():
     """
-    return execute_query(query, (limit,))
-
-
-def _fetch_categories():
-    """Fetch all active product categories."""
-    query = """
-        SELECT DISTINCT category
-        FROM products
-        WHERE is_active = true
-        ORDER BY category
+    Aggregate outgoing_payments by calendar month.
+    Returns a dict {year_month_str: total_amount}.
     """
-    return execute_query(query)
-
-
-def _fetch_branches():
-    """Fetch all active branches."""
-    query = """
-        SELECT branch_id
-        FROM branches
-        WHERE is_active = true
-        ORDER BY branch_id
-    """
-    return execute_query(query)
-
-
-def _fetch_product_daily_sales(product_id, branch_id):
-    """Fetch daily sales quantity for a specific product at a branch."""
     query = """
         SELECT
-            DATE(t.transaction_date) AS ds,
-            SUM(ti.quantity) AS y
-        FROM transaction_items ti
-        JOIN transactions t ON ti.transaction_id = t.transaction_id
-        WHERE ti.product_id = %s
-          AND t.branch_id = %s
-          AND t.transaction_date >= NOW() - INTERVAL '6 months'
-        GROUP BY DATE(t.transaction_date)
-        ORDER BY ds
+            TO_CHAR(payment_date, 'YYYY-MM') AS month,
+            SUM(CAST(amount AS numeric))      AS total
+        FROM outgoing_payments
+        WHERE payment_date IS NOT NULL
+          AND payment_date >= NOW() - INTERVAL '%s months'
+        GROUP BY TO_CHAR(payment_date, 'YYYY-MM')
+        ORDER BY month
+    """ % (LOOKBACK_MONTHS + 1)
+
+    rows = execute_query(query)
+    if not rows:
+        return {}
+
+    return {row['month']: float(row['total'] or 0) for row in rows}
+
+
+def _last_n_months(n):
+    """Return a list of YYYY-MM strings for the last n complete months."""
+    today = date.today()
+    # start from the beginning of the current month then go back
+    first_of_current = today.replace(day=1)
+    months = []
+    for i in range(1, n + 1):
+        m = first_of_current - relativedelta(months=i)
+        months.append(m.strftime('%Y-%m'))
+    return list(reversed(months))
+
+
+def _compute_average(monthly_data, months):
+    """Compute the mean of the given months from monthly_data dict."""
+    values = [monthly_data.get(m, 0.0) for m in months]
+    return float(np.mean(values)) if values else 0.0
+
+
+def _build_forecast_rows(avg_inflow, avg_outflow):
     """
-    return execute_query(query, (product_id, branch_id))
-
-
-def _fetch_category_daily_sales(category, branch_id):
-    """Fetch daily sales quantity for a product category at a branch."""
-    query = """
-        SELECT
-            DATE(t.transaction_date) AS ds,
-            SUM(ti.quantity) AS y
-        FROM transaction_items ti
-        JOIN transactions t ON ti.transaction_id = t.transaction_id
-        JOIN products p ON ti.product_id = p.product_id
-        WHERE p.category = %s
-          AND t.branch_id = %s
-          AND t.transaction_date >= NOW() - INTERVAL '6 months'
-        GROUP BY DATE(t.transaction_date)
-        ORDER BY ds
+    Build forecast rows for the next FORECAST_MONTHS months.
+    Confidence interval: ±20% of the forecast value.
     """
-    return execute_query(query, (category, branch_id))
+    rows = []
+    today = date.today()
+    first_of_next = today.replace(day=1) + relativedelta(months=1)
 
+    for i in range(FORECAST_MONTHS):
+        forecast_month = first_of_next + relativedelta(months=i)
+        month_str = forecast_month.strftime('%Y-%m-%d')  # first day of month
 
-def _run_prophet_forecast(daily_data, holidays_df, periods=30):
-    """
-    Fit Prophet model and generate forecast.
+        rows.append((
+            month_str,
+            round(avg_inflow, 2),
+            round(avg_inflow * 0.80, 2),
+            round(avg_inflow * 1.20, 2),
+            round(avg_outflow, 2),
+            round(avg_outflow * 0.80, 2),
+            round(avg_outflow * 1.20, 2),
+            LOOKBACK_MONTHS,
+        ))
 
-    Args:
-        daily_data: list of dicts with 'ds' and 'y' keys
-        holidays_df: DataFrame of holidays for Prophet
-        periods: number of days to forecast
-
-    Returns:
-        DataFrame with forecast columns or None if insufficient data
-    """
-    if not daily_data or len(daily_data) < 14:
-        return None
-
-    df = pd.DataFrame(daily_data)
-    df['ds'] = pd.to_datetime(df['ds'])
-    df['y'] = pd.to_numeric(df['y'], errors='coerce').fillna(0).astype(float)
-
-    # Need at least 14 data points for meaningful forecast
-    if len(df) < 14 or df['y'].sum() == 0:
-        return None
-
-    model = Prophet(
-        yearly_seasonality=True,
-        weekly_seasonality=True,
-        daily_seasonality=False,
-        holidays=holidays_df,
-        changepoint_prior_scale=0.05,  # Conservative trend changes
-        seasonality_prior_scale=10.0,
-    )
-
-    # Suppress Stan output
-    model.fit(df, suppress_logging=True if hasattr(Prophet.fit, 'suppress_logging') else False)
-
-    future = model.make_future_dataframe(periods=periods)
-    forecast = model.predict(future)
-
-    # Return only the forecast period (future dates)
-    forecast_only = forecast[forecast['ds'] > df['ds'].max()].copy()
-    forecast_only['yhat'] = forecast_only['yhat'].clip(lower=0)
-    forecast_only['yhat_lower'] = forecast_only['yhat_lower'].clip(lower=0)
-    forecast_only['yhat_upper'] = forecast_only['yhat_upper'].clip(lower=0)
-
-    return forecast_only[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
-
-
-def _upsert_forecasts(forecasts):
-    """Write demand forecasts to the database."""
-    if not forecasts:
-        return
-
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            # Delete existing forecasts for the scopes we're updating
-            cur.execute("DELETE FROM demand_forecasts")
-
-            values = [
-                (
-                    f.get('product_id'),
-                    f.get('category'),
-                    f['branch_id'],
-                    f['forecast_date'],
-                    f['predicted_quantity'],
-                    f['lower_bound'],
-                    f['upper_bound'],
-                    f.get('based_on_period', '6 months'),
-                )
-                for f in forecasts
-            ]
-
-            psycopg2.extras.execute_values(
-                cur,
-                """
-                INSERT INTO demand_forecasts
-                    (product_id, category, branch_id, forecast_date,
-                     predicted_quantity, lower_bound, upper_bound,
-                     based_on_period, updated_at)
-                VALUES %s
-                """,
-                values,
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, NOW())"
-            )
-
-            conn.commit()
-    finally:
-        conn.close()
+    return rows
 
 
 def run_demand_forecast(params):
     """
-    Run Prophet demand forecasting for top products and all categories by branch.
+    Run cash flow forecasting: project inflows and outflows 6 months ahead.
 
     Args:
-        params: dict with optional keys: branch_id (to limit to one branch)
+        params: dict (reserved for future use)
 
     Returns:
         dict with 'summary' describing results
     """
     try:
-        holidays_df = _get_philippine_holidays()
-        all_forecasts = []
-        product_count = 0
-        category_count = 0
+        historical_months = _last_n_months(LOOKBACK_MONTHS)
 
-        # Get branches to process
-        if params.get('branch_id'):
-            branches = [{'branch_id': params['branch_id']}]
-        else:
-            branches = _fetch_branches()
+        inflows = _fetch_monthly_inflows()
+        outflows = _fetch_monthly_outflows()
 
-        if not branches:
-            return {'summary': 'No active branches found'}
+        avg_inflow = _compute_average(inflows, historical_months)
+        avg_outflow = _compute_average(outflows, historical_months)
 
-        # --- Forecast top 50 products by branch ---
-        top_products = _fetch_top_products(limit=50)
+        rows = _build_forecast_rows(avg_inflow, avg_outflow)
+        upsert_cash_flow_forecasts(rows)
 
-        for product_row in (top_products or []):
-            product_id = product_row['product_id']
-
-            for branch_row in branches:
-                branch_id = branch_row['branch_id']
-
-                daily_data = _fetch_product_daily_sales(product_id, branch_id)
-                forecast_df = _run_prophet_forecast(daily_data, holidays_df)
-
-                if forecast_df is not None and not forecast_df.empty:
-                    product_count += 1
-                    for _, row in forecast_df.iterrows():
-                        all_forecasts.append({
-                            'product_id': product_id,
-                            'category': None,
-                            'branch_id': branch_id,
-                            'forecast_date': row['ds'].strftime('%Y-%m-%d'),
-                            'predicted_quantity': round(float(row['yhat']), 2),
-                            'lower_bound': round(float(row['yhat_lower']), 2),
-                            'upper_bound': round(float(row['yhat_upper']), 2),
-                            'based_on_period': '6 months',
-                        })
-
-        # --- Forecast all categories by branch ---
-        categories = _fetch_categories()
-
-        for cat_row in (categories or []):
-            category = cat_row['category']
-
-            for branch_row in branches:
-                branch_id = branch_row['branch_id']
-
-                daily_data = _fetch_category_daily_sales(category, branch_id)
-                forecast_df = _run_prophet_forecast(daily_data, holidays_df)
-
-                if forecast_df is not None and not forecast_df.empty:
-                    category_count += 1
-                    for _, row in forecast_df.iterrows():
-                        all_forecasts.append({
-                            'product_id': None,
-                            'category': category,
-                            'branch_id': branch_id,
-                            'forecast_date': row['ds'].strftime('%Y-%m-%d'),
-                            'predicted_quantity': round(float(row['yhat']), 2),
-                            'lower_bound': round(float(row['yhat_lower']), 2),
-                            'upper_bound': round(float(row['yhat_upper']), 2),
-                            'based_on_period': '6 months',
-                        })
-
-        # Write all forecasts to database
-        _upsert_forecasts(all_forecasts)
+        net_flow = avg_inflow - avg_outflow
+        net_label = "positive" if net_flow >= 0 else "negative"
 
         return {
             'summary': (
-                f"Generated 30-day demand forecasts: "
-                f"{product_count} product-branch combinations, "
-                f"{category_count} category-branch combinations "
-                f"({len(all_forecasts)} total forecast rows)"
+                f"Generated {FORECAST_MONTHS}-month cash flow forecast "
+                f"based on {LOOKBACK_MONTHS}-month average. "
+                f"Projected monthly inflow: {avg_inflow:,.2f}, "
+                f"outflow: {avg_outflow:,.2f} "
+                f"(net {net_label}: {abs(net_flow):,.2f})."
             ),
-            'product_forecasts': product_count,
-            'category_forecasts': category_count,
-            'total_rows': len(all_forecasts),
+            'forecast_months': FORECAST_MONTHS,
+            'avg_monthly_inflow': round(avg_inflow, 2),
+            'avg_monthly_outflow': round(avg_outflow, 2),
+            'net_monthly_flow': round(net_flow, 2),
         }
 
     except Exception as e:
         return {
-            'summary': f"Demand forecasting failed: {str(e)}",
+            'summary': f"Cash flow forecasting failed: {str(e)}",
             'error': str(e),
         }
