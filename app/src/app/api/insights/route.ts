@@ -11,7 +11,7 @@ export const GET = withAuth(async (_request: NextRequest) => {
       .from(insightCards)
       .where(eq(insightCards.isActive, true))
       .orderBy(
-        sql`CASE severity WHEN 'alert' THEN 1 WHEN 'warning' THEN 2 WHEN 'opportunity' THEN 3 ELSE 4 END`,
+        sql`CASE severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 WHEN 'INFO' THEN 5 ELSE 6 END`,
         desc(insightCards.createdAt)
       )
 
