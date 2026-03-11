@@ -1,0 +1,302 @@
+<h2>Customer Emulator & OCR / Escalation Flow</h2>
+<p class="subtitle">Popover emulator for demo + document verification pipeline</p>
+
+<div class="section">
+  <h3>Customer Emulator (Popover)</h3>
+  <div style="display: flex; gap: 24px; justify-content: center;">
+
+    <!-- Popover mockup -->
+    <div style="width: 380px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 -8px 32px rgba(0,0,0,0.4); border: 1px solid #e2e8f0;">
+      <!-- Header -->
+      <div style="background: #003B1F; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="color: #C5A930; font-weight: bold; font-size: 13px;">Customer Emulator</div>
+          <div style="color: #7cb894; font-size: 10px;">Demo as any customer in the system</div>
+        </div>
+        <div style="color: #7cb894; font-size: 16px; cursor: pointer;">✕</div>
+      </div>
+
+      <!-- Customer selector -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
+        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-family: monospace;">Select Customer</div>
+        <div style="border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; font-size: 12px; color: #1e293b; display: flex; justify-content: space-between; align-items: center; font-family: -apple-system, sans-serif;">
+          <span>Uniqlo Philippines — <span style="color: #64748b;">Greenbelt 5, Unit 201</span></span>
+          <span style="color: #94a3b8;">▼</span>
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 6px;">
+          <div style="font-size: 9px; background: #f0fdf4; color: #166534; padding: 2px 8px; border-radius: 10px; border: 1px solid #bbf7d0;">Tenant</div>
+          <div style="font-size: 9px; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 10px; border: 1px solid #bfdbfe;">Lease</div>
+          <div style="font-size: 9px; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; border: 1px solid #fde68a;">1 Overdue</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display: flex; border-bottom: 1px solid #f1f5f9; font-family: -apple-system, sans-serif;">
+        <div style="flex: 1; text-align: center; padding: 10px; font-size: 11px; font-weight: 600; color: #003B1F; border-bottom: 2px solid #003B1F;">My Invoices</div>
+        <div style="flex: 1; text-align: center; padding: 10px; font-size: 11px; color: #94a3b8;">QR Codes</div>
+        <div style="flex: 1; text-align: center; padding: 10px; font-size: 11px; color: #94a3b8;">Upload Proof</div>
+        <div style="flex: 1; text-align: center; padding: 10px; font-size: 11px; color: #94a3b8;">History</div>
+      </div>
+
+      <!-- Invoice list -->
+      <div style="padding: 12px 16px; max-height: 280px; overflow-y: auto; font-family: -apple-system, sans-serif;">
+        <!-- Invoice 1 - Overdue -->
+        <div style="border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #fef2f2;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 600; font-size: 12px; color: #1e293b;">INV-2026-02-00042</span>
+            <span style="font-size: 9px; background: #dc2626; color: #fff; padding: 2px 6px; border-radius: 4px;">OVERDUE</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
+            <span>Feb 2026 • Due: Feb 28</span>
+            <span style="font-weight: 700; color: #dc2626;">₱285,000.00</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <div style="flex: 1; background: #003B1F; color: #C5A930; padding: 6px; border-radius: 4px; text-align: center; font-size: 10px; font-weight: 600; cursor: pointer;">Show QR</div>
+            <div style="flex: 1; background: #f8fafc; color: #003B1F; padding: 6px; border-radius: 4px; text-align: center; font-size: 10px; font-weight: 600; border: 1px solid #d1d5db; cursor: pointer;">Upload Proof</div>
+          </div>
+        </div>
+
+        <!-- Invoice 2 - Current -->
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #fff;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 600; font-size: 12px; color: #1e293b;">INV-2026-03-00042</span>
+            <span style="font-size: 9px; background: #f59e0b; color: #fff; padding: 2px 6px; border-radius: 4px;">PENDING</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
+            <span>Mar 2026 • Due: Mar 15</span>
+            <span style="font-weight: 700; color: #1e293b;">₱285,000.00</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <div style="flex: 1; background: #003B1F; color: #C5A930; padding: 6px; border-radius: 4px; text-align: center; font-size: 10px; font-weight: 600; cursor: pointer;">Show QR</div>
+            <div style="flex: 1; background: #f8fafc; color: #003B1F; padding: 6px; border-radius: 4px; text-align: center; font-size: 10px; font-weight: 600; border: 1px solid #d1d5db; cursor: pointer;">Upload Proof</div>
+          </div>
+        </div>
+
+        <!-- Invoice 3 - Paid -->
+        <div style="border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; background: #f0fdf4;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 600; font-size: 12px; color: #1e293b;">INV-2026-01-00042</span>
+            <span style="font-size: 9px; background: #16a34a; color: #fff; padding: 2px 6px; border-radius: 4px;">PAID</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b;">
+            <span>Jan 2026 • Paid: Jan 12</span>
+            <span style="font-weight: 700; color: #16a34a;">₱285,000.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Code view -->
+    <div style="width: 320px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 -8px 32px rgba(0,0,0,0.4); border: 1px solid #e2e8f0;">
+      <div style="background: #003B1F; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="color: #C5A930; font-weight: bold; font-size: 13px;">Customer Emulator</div>
+          <div style="color: #7cb894; font-size: 10px;">QR Code View</div>
+        </div>
+        <div style="color: #7cb894; font-size: 12px; cursor: pointer;">← Back</div>
+      </div>
+
+      <div style="padding: 20px; text-align: center; font-family: -apple-system, sans-serif;">
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Invoice INV-2026-03-00042</div>
+        <div style="font-size: 20px; font-weight: 700; color: #003B1F; margin-bottom: 16px;">₱285,000.00</div>
+
+        <!-- QR placeholder -->
+        <div style="width: 200px; height: 200px; margin: 0 auto 16px auto; background: #f8fafc; border: 2px dashed #d1d5db; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+          <div style="font-size: 48px; margin-bottom: 8px;">📱</div>
+          <div style="font-size: 11px; color: #94a3b8;">QR Code</div>
+          <div style="font-size: 9px; color: #cbd5e1;">(generated via qrcode npm)</div>
+        </div>
+
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Scan with your phone camera</div>
+        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 16px;">Opens payment page at /pay</div>
+
+        <div style="background: #f8fafc; border-radius: 8px; padding: 10px; font-size: 10px; color: #64748b; text-align: left; font-family: monospace;">
+          <div style="margin-bottom: 2px;">Contract: <span style="color: #1e293b;">ALC-2024-00123</span></div>
+          <div style="margin-bottom: 2px;">Account: <span style="color: #1e293b;">CUST-0017</span></div>
+          <div style="margin-bottom: 2px;">Due: <span style="color: #dc2626;">Mar 15, 2026</span></div>
+          <div>Expires: <span style="color: #1e293b;">24 hours</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>OCR & AI Validation Pipeline</h3>
+  <div style="background: #0f172a; border-radius: 12px; padding: 24px; font-family: monospace; font-size: 12px; color: #e2e8f0;">
+
+    <!-- Pipeline steps -->
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px;">
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center;">
+        <div style="font-size: 18px; margin-bottom: 4px;">📄</div>
+        <div style="color: #4ade80; font-weight: bold; font-size: 11px;">Upload</div>
+        <div style="color: #64748b; font-size: 9px; margin-top: 4px;">Customer uploads check photo, bank slip, or transfer screenshot</div>
+      </div>
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center;">
+        <div style="font-size: 18px; margin-bottom: 4px;">🔍</div>
+        <div style="color: #60a5fa; font-weight: bold; font-size: 11px;">OCR Extract</div>
+        <div style="color: #64748b; font-size: 9px; margin-top: 4px;">Gemini Vision extracts: amount, date, ref #, bank, payee name</div>
+      </div>
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center;">
+        <div style="font-size: 18px; margin-bottom: 4px;">⚖️</div>
+        <div style="color: #fbbf24; font-weight: bold; font-size: 11px;">AI Validate</div>
+        <div style="color: #64748b; font-size: 9px; margin-top: 4px;">Compare OCR data vs invoice record vs uploading customer</div>
+      </div>
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center;">
+        <div style="font-size: 18px; margin-bottom: 4px;">✅</div>
+        <div style="color: #4ade80; font-weight: bold; font-size: 11px;">Match</div>
+        <div style="color: #64748b; font-size: 9px; margin-top: 4px;">All checks pass → auto-create incoming payment, update balance</div>
+      </div>
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center;">
+        <div style="font-size: 18px; margin-bottom: 4px;">🚨</div>
+        <div style="color: #f87171; font-weight: bold; font-size: 11px;">Escalate</div>
+        <div style="color: #64748b; font-size: 9px; margin-top: 4px;">Discrepancy found → create escalation → human review queue</div>
+      </div>
+    </div>
+
+    <!-- Validation checks -->
+    <div style="margin-bottom: 20px;">
+      <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">AI Validation Checks</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div style="background: #1e293b; border-radius: 6px; padding: 10px;">
+          <div style="color: #f87171; font-weight: bold; font-size: 11px; margin-bottom: 4px;">PAYER_MISMATCH</div>
+          <div style="color: #94a3b8; font-size: 10px;">Payee name on receipt ≠ customer who uploaded<br>e.g. "SM Retail" uploaded via Uniqlo's portal</div>
+        </div>
+        <div style="background: #1e293b; border-radius: 6px; padding: 10px;">
+          <div style="color: #fbbf24; font-weight: bold; font-size: 11px; margin-bottom: 4px;">AMOUNT_MISMATCH</div>
+          <div style="color: #94a3b8; font-size: 10px;">Amount on receipt ≠ invoice balance<br>e.g. Receipt shows ₱250K but invoice is ₱285K</div>
+        </div>
+        <div style="background: #1e293b; border-radius: 6px; padding: 10px;">
+          <div style="color: #fb923c; font-weight: bold; font-size: 11px; margin-bottom: 4px;">DATE_MISMATCH</div>
+          <div style="color: #94a3b8; font-size: 10px;">Payment date on receipt is before invoice issue<br>or suspiciously far from upload date</div>
+        </div>
+        <div style="background: #1e293b; border-radius: 6px; padding: 10px;">
+          <div style="color: #a78bfa; font-weight: bold; font-size: 11px; margin-bottom: 4px;">DUPLICATE</div>
+          <div style="color: #94a3b8; font-size: 10px;">Reference number already used in a prior payment<br>Same receipt uploaded twice</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gemini OCR prompt sketch -->
+    <div>
+      <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Gemini Vision Extraction (Prompt Sketch)</div>
+      <div style="background: #1e293b; border-radius: 6px; padding: 12px; font-size: 11px; color: #cbd5e1; line-height: 1.7;">
+        "Analyze this payment proof document. Extract:<br>
+        &nbsp;&nbsp;- payment_amount (numeric)<br>
+        &nbsp;&nbsp;- payment_date (ISO format)<br>
+        &nbsp;&nbsp;- reference_number<br>
+        &nbsp;&nbsp;- bank_name<br>
+        &nbsp;&nbsp;- payee_name (who received the payment)<br>
+        &nbsp;&nbsp;- payer_name (who made the payment)<br>
+        &nbsp;&nbsp;- document_type (check / bank_transfer / deposit_slip)<br>
+        Return as JSON."
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Escalation → Human Handoff</h3>
+  <div style="background: #0f172a; border-radius: 12px; padding: 24px; font-family: monospace; font-size: 12px; color: #e2e8f0;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+      <!-- Escalation Queue (Admin View) -->
+      <div>
+        <div style="color: #f87171; font-weight: bold; font-size: 13px; margin-bottom: 12px;">Escalation Queue (Admin Side)</div>
+        <div style="background: #1e293b; border-radius: 8px; overflow: hidden;">
+          <!-- Header -->
+          <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap: 0; font-size: 10px; color: #64748b; padding: 8px 12px; border-bottom: 1px solid #334155; text-transform: uppercase;">
+            <div>Customer / Doc</div>
+            <div>Issue</div>
+            <div>Status</div>
+            <div>Action</div>
+          </div>
+          <!-- Row 1 -->
+          <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap: 0; font-size: 11px; padding: 10px 12px; border-bottom: 1px solid #1e293b; background: rgba(239,68,68,0.05);">
+            <div>
+              <div style="color: #e2e8f0;">Uniqlo PH</div>
+              <div style="color: #64748b; font-size: 9px;">DOC-0091 • 5 min ago</div>
+            </div>
+            <div>
+              <span style="color: #f87171;">PAYER_MISMATCH</span>
+              <div style="color: #64748b; font-size: 9px;">Receipt: "SM Retail Inc"</div>
+            </div>
+            <div>
+              <span style="background: #7f1d1d; color: #fca5a5; padding: 2px 6px; border-radius: 4px; font-size: 9px;">OPEN</span>
+            </div>
+            <div>
+              <span style="color: #60a5fa; font-size: 10px; cursor: pointer;">Review →</span>
+            </div>
+          </div>
+          <!-- Row 2 -->
+          <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap: 0; font-size: 11px; padding: 10px 12px; border-bottom: 1px solid #1e293b;">
+            <div>
+              <div style="color: #e2e8f0;">Jollibee T. Sq.</div>
+              <div style="color: #64748b; font-size: 9px;">DOC-0089 • 1 hr ago</div>
+            </div>
+            <div>
+              <span style="color: #fbbf24;">AMOUNT_MISMATCH</span>
+              <div style="color: #64748b; font-size: 9px;">₱95K vs ₱120K invoice</div>
+            </div>
+            <div>
+              <span style="background: #78350f; color: #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 9px;">IN REVIEW</span>
+            </div>
+            <div>
+              <span style="color: #64748b; font-size: 10px;">Assigned: JB</span>
+            </div>
+          </div>
+          <!-- Row 3 -->
+          <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap: 0; font-size: 11px; padding: 10px 12px;">
+            <div>
+              <div style="color: #e2e8f0;">DMCI PropMgmt</div>
+              <div style="color: #64748b; font-size: 9px;">DOC-0085 • 3 hr ago</div>
+            </div>
+            <div>
+              <span style="color: #a78bfa;">DUPLICATE</span>
+              <div style="color: #64748b; font-size: 9px;">Ref# already used</div>
+            </div>
+            <div>
+              <span style="background: #14532d; color: #86efac; padding: 2px 6px; border-radius: 4px; font-size: 9px;">RESOLVED</span>
+            </div>
+            <div>
+              <span style="color: #64748b; font-size: 10px;">Dismissed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review Detail -->
+      <div>
+        <div style="color: #60a5fa; font-weight: bold; font-size: 13px; margin-bottom: 12px;">Review Detail</div>
+        <div style="background: #1e293b; border-radius: 8px; padding: 14px;">
+          <div style="color: #f87171; font-size: 11px; font-weight: bold; margin-bottom: 8px;">AI Analysis — PAYER_MISMATCH</div>
+          <div style="background: #0f172a; border-radius: 6px; padding: 10px; font-size: 11px; color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">
+            "The uploaded document is a BPI check deposit slip showing a payment of ₱285,000 from <span style="color: #f87171; font-weight: bold;">SM Retail Inc.</span> However, this document was uploaded through the portal of <span style="color: #4ade80; font-weight: bold;">Uniqlo Philippines</span> (CUST-0017). The payer identity does not match the uploading customer. This requires human verification."
+          </div>
+          <div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px;">Side-by-side comparison:</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div style="background: #0f172a; border-radius: 4px; padding: 8px; font-size: 10px;">
+              <div style="color: #64748b; margin-bottom: 4px;">FROM DOCUMENT (OCR)</div>
+              <div>Payer: <span style="color: #f87171;">SM Retail Inc.</span></div>
+              <div>Amount: ₱285,000</div>
+              <div>Date: Mar 8, 2026</div>
+              <div>Ref: CHK-7291034</div>
+            </div>
+            <div style="background: #0f172a; border-radius: 4px; padding: 8px; font-size: 10px;">
+              <div style="color: #64748b; margin-bottom: 4px;">FROM SYSTEM (Invoice)</div>
+              <div>Customer: <span style="color: #4ade80;">Uniqlo Philippines</span></div>
+              <div>Amount: ₱285,000</div>
+              <div>Due: Mar 15, 2026</div>
+              <div>Invoice: INV-2026-03-00042</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <div style="flex: 1; background: #16a34a; color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 11px; font-weight: 600; cursor: pointer;">Accept Anyway</div>
+            <div style="flex: 1; background: #dc2626; color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 11px; font-weight: 600; cursor: pointer;">Reject</div>
+            <div style="flex: 1; background: #334155; color: #e2e8f0; padding: 8px; border-radius: 6px; text-align: center; font-size: 11px; font-weight: 600; cursor: pointer;">Request Reupload</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

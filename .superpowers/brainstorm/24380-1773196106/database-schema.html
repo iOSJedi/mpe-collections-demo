@@ -1,0 +1,196 @@
+<h2>Database Schema — Collections Domain</h2>
+<p class="subtitle">Replacing JC Supermarket tables with Ayala Land collections tables</p>
+
+<div class="section">
+  <h3>Core Domain Tables</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <!-- payers -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">payers</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">payer_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #f0fdf4;">type</span> <span style="color: #64748b;">enum TENANT | MERCHANT</span><br>
+        <span style="color: #f0fdf4;">name</span> <span style="color: #64748b;">varchar — company/person name</span><br>
+        <span style="color: #f0fdf4;">contact_person</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">email</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">phone</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">business_type</span> <span style="color: #64748b;">varchar — e.g. "Retail", "F&B", "Property Mgmt"</span><br>
+        <span style="color: #f0fdf4;">property_name</span> <span style="color: #64748b;">varchar — e.g. "Greenbelt 5"</span><br>
+        <span style="color: #f0fdf4;">unit_info</span> <span style="color: #64748b;">varchar — e.g. "Unit 301, 3F"</span><br>
+        <span style="color: #f0fdf4;">status</span> <span style="color: #64748b;">enum ACTIVE | INACTIVE | SUSPENDED</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- contracts -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">contracts</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">contract_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK → payers</span><br>
+        <span style="color: #f0fdf4;">contract_number</span> <span style="color: #64748b;">varchar unique — e.g. "ALC-2024-00123"</span><br>
+        <span style="color: #f0fdf4;">type</span> <span style="color: #64748b;">enum LEASE | CONCESSION | SERVICE</span><br>
+        <span style="color: #f0fdf4;">description</span> <span style="color: #64748b;">text — lease/service details</span><br>
+        <span style="color: #f0fdf4;">monthly_amount</span> <span style="color: #64748b;">decimal — in PHP</span><br>
+        <span style="color: #f0fdf4;">start_date</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">end_date</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">status</span> <span style="color: #64748b;">enum ACTIVE | EXPIRED | TERMINATED</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- invoices -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">invoices</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">invoice_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">contract_id</span> <span style="color: #64748b;">FK → contracts</span><br>
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK → payers</span><br>
+        <span style="color: #f0fdf4;">invoice_number</span> <span style="color: #64748b;">varchar unique — e.g. "INV-2026-03-00001"</span><br>
+        <span style="color: #f0fdf4;">billing_period_start</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">billing_period_end</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">due_date</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">amount</span> <span style="color: #64748b;">decimal — total invoice amount (PHP)</span><br>
+        <span style="color: #f0fdf4;">balance_remaining</span> <span style="color: #64748b;">decimal — tracks partial payments</span><br>
+        <span style="color: #f0fdf4;">status</span> <span style="color: #64748b;">enum PENDING | PARTIAL | PAID | OVERDUE</span><br>
+        <span style="color: #f0fdf4;">issued_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- payments -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">payments</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">payment_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">invoice_id</span> <span style="color: #64748b;">FK → invoices</span><br>
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK → payers</span><br>
+        <span style="color: #f0fdf4;">amount</span> <span style="color: #64748b;">decimal — amount paid (PHP)</span><br>
+        <span style="color: #f0fdf4;">payment_method</span> <span style="color: #64748b;">enum STRIPE | BPI_TRANSFER | CHECK | CASH</span><br>
+        <span style="color: #f0fdf4;">payment_date</span> <span style="color: #64748b;">timestamp</span><br>
+        <span style="color: #f0fdf4;">stripe_payment_intent_id</span> <span style="color: #64748b;">varchar nullable</span><br>
+        <span style="color: #f0fdf4;">reference_number</span> <span style="color: #64748b;">varchar nullable — bank ref</span><br>
+        <span style="color: #f0fdf4;">status</span> <span style="color: #64748b;">enum PENDING | CONFIRMED | FAILED | REFUNDED</span><br>
+        <span style="color: #f0fdf4;">confirmed_at</span> <span style="color: #64748b;">timestamp nullable</span>
+      </div>
+    </div>
+
+    <!-- qr_codes -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">qr_codes</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">qr_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">invoice_id</span> <span style="color: #64748b;">FK → invoices</span><br>
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK → payers</span><br>
+        <span style="color: #f0fdf4;">contract_number</span> <span style="color: #64748b;">varchar — embedded in QR</span><br>
+        <span style="color: #f0fdf4;">account_identifier</span> <span style="color: #64748b;">varchar — embedded in QR</span><br>
+        <span style="color: #f0fdf4;">amount</span> <span style="color: #64748b;">decimal — embedded in QR</span><br>
+        <span style="color: #f0fdf4;">encoded_url</span> <span style="color: #64748b;">text — full /pay?... URL</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span><br>
+        <span style="color: #f0fdf4;">expires_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- documents -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">documents</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">document_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK → payers — who uploaded</span><br>
+        <span style="color: #fb923c;">invoice_id</span> <span style="color: #64748b;">FK → invoices nullable</span><br>
+        <span style="color: #fb923c;">payment_id</span> <span style="color: #64748b;">FK → payments nullable</span><br>
+        <span style="color: #f0fdf4;">file_url</span> <span style="color: #64748b;">text — stored file location</span><br>
+        <span style="color: #f0fdf4;">file_name</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">file_type</span> <span style="color: #64748b;">varchar — image/pdf</span><br>
+        <span style="color: #f0fdf4;">ocr_result</span> <span style="color: #64748b;">jsonb — extracted fields from Gemini</span><br>
+        <span style="color: #f0fdf4;">ocr_status</span> <span style="color: #64748b;">enum PENDING | PROCESSED | FAILED</span><br>
+        <span style="color: #f0fdf4;">validation_result</span> <span style="color: #64748b;">jsonb — AI validation output</span><br>
+        <span style="color: #f0fdf4;">uploaded_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- escalations -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">escalations</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">escalation_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">document_id</span> <span style="color: #64748b;">FK → documents</span><br>
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK → payers</span><br>
+        <span style="color: #fb923c;">invoice_id</span> <span style="color: #64748b;">FK → invoices</span><br>
+        <span style="color: #f0fdf4;">type</span> <span style="color: #64748b;">enum AMOUNT_MISMATCH | PAYER_MISMATCH | DATE_MISMATCH | DUPLICATE | OTHER</span><br>
+        <span style="color: #f0fdf4;">description</span> <span style="color: #64748b;">text — AI-generated explanation</span><br>
+        <span style="color: #f0fdf4;">ai_analysis</span> <span style="color: #64748b;">jsonb — full AI analysis details</span><br>
+        <span style="color: #f0fdf4;">status</span> <span style="color: #64748b;">enum OPEN | IN_REVIEW | RESOLVED | DISMISSED</span><br>
+        <span style="color: #f0fdf4;">assigned_to</span> <span style="color: #64748b;">varchar nullable — staff member</span><br>
+        <span style="color: #f0fdf4;">resolution_notes</span> <span style="color: #64748b;">text nullable</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span><br>
+        <span style="color: #f0fdf4;">resolved_at</span> <span style="color: #64748b;">timestamp nullable</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>ML Output Tables (Repurposed)</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+
+    <!-- payer_segments -->
+    <div style="background: #0f172a; border: 1px solid #7c3aed; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="color: #a78bfa; font-weight: bold; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid #4c1d95; padding-bottom: 8px;">payer_segments</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK</span><br>
+        <span style="color: #f0fdf4;">segment_name</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">regularity_score</span> <span style="color: #64748b;">decimal</span><br>
+        <span style="color: #f0fdf4;">amount_score</span> <span style="color: #64748b;">decimal</span><br>
+        <span style="color: #f0fdf4;">timeliness_score</span> <span style="color: #64748b;">decimal</span><br>
+        <span style="color: #f0fdf4;">cluster_id</span> <span style="color: #64748b;">int</span><br>
+        <span style="color: #f0fdf4;">scored_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- delinquency_scores -->
+    <div style="background: #0f172a; border: 1px solid #7c3aed; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="color: #a78bfa; font-weight: bold; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid #4c1d95; padding-bottom: 8px;">delinquency_scores</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK</span><br>
+        <span style="color: #f0fdf4;">risk_score</span> <span style="color: #64748b;">decimal 0-1</span><br>
+        <span style="color: #f0fdf4;">risk_level</span> <span style="color: #64748b;">LOW|MED|HIGH|CRIT</span><br>
+        <span style="color: #f0fdf4;">days_overdue_avg</span> <span style="color: #64748b;">decimal</span><br>
+        <span style="color: #f0fdf4;">missed_payments</span> <span style="color: #64748b;">int</span><br>
+        <span style="color: #f0fdf4;">payment_trend</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">top_risk_factor</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">scored_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- credit_risk_scores + insight_cards -->
+    <div style="background: #0f172a; border: 1px solid #7c3aed; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="color: #a78bfa; font-weight: bold; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid #4c1d95; padding-bottom: 8px;">credit_risk_scores</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fb923c;">payer_id</span> <span style="color: #64748b;">FK</span><br>
+        <span style="color: #f0fdf4;">risk_score / risk_level</span><br>
+        <span style="color: #f0fdf4;">outstanding_balance</span><br>
+        <span style="color: #f0fdf4;">credit_utilization</span><br>
+        <span style="color: #f0fdf4;">avg_days_overdue</span><br>
+        <span style="color: #f0fdf4;">payment_trend</span><br>
+        <span style="color: #f0fdf4;">scored_at</span>
+      </div>
+      <div style="color: #a78bfa; font-weight: bold; font-size: 13px; margin: 12px 0 8px 0; border-bottom: 1px solid #4c1d95; padding-bottom: 8px;">insight_cards</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #f0fdf4;">severity / title / body</span><br>
+        <span style="color: #f0fdf4;">action / related_intent</span><br>
+        <span style="color: #64748b;">(kept from original)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Key Relationships</h3>
+  <div style="background: #0f172a; border-radius: 8px; padding: 24px; font-family: monospace; font-size: 12px; color: #94a3b8; line-height: 2;">
+    <span style="color: #22c55e;">payer</span> 1 ──── * <span style="color: #22c55e;">contract</span> 1 ──── * <span style="color: #22c55e;">invoice</span> 1 ──── * <span style="color: #22c55e;">payment</span><br>
+    <span style="color: #22c55e;">invoice</span> 1 ──── 1 <span style="color: #f59e0b;">qr_code</span><br>
+    <span style="color: #22c55e;">payer</span> 1 ──── * <span style="color: #f59e0b;">document</span> ──── ? <span style="color: #ef4444;">escalation</span><br>
+    <span style="color: #22c55e;">payer</span> 1 ──── 1 <span style="color: #a78bfa;">payer_segment</span> / <span style="color: #a78bfa;">delinquency_score</span> / <span style="color: #a78bfa;">credit_risk_score</span>
+  </div>
+</div>

@@ -1,0 +1,266 @@
+<h2>Navigation Design — SAP Fiori Conventions</h2>
+<p class="subtitle">Modeled after SAP S/4 HANA Fiori Launchpad: Spaces → Pages → Sections → Tiles</p>
+
+<div class="section">
+  <h3>Terminology Mapping</h3>
+  <div style="background: #0f172a; border-radius: 8px; padding: 20px; font-family: monospace; font-size: 12px;">
+    <table style="width: 100%; border-collapse: collapse; color: #e2e8f0;">
+      <thead>
+        <tr style="border-bottom: 1px solid #334155; color: #94a3b8; text-align: left; font-size: 11px;">
+          <th style="padding: 8px;">Our Original Term</th>
+          <th style="padding: 8px;">→</th>
+          <th style="padding: 8px;">SAP S/4 HANA Term</th>
+          <th style="padding: 8px;">Notes</th>
+        </tr>
+      </thead>
+      <tbody style="font-size: 12px;">
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">Payer / Tenant</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Customer</td><td style="padding: 8px; color: #94a3b8;">Business Partner with FI-AR role</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">Merchant / Vendor</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Supplier</td><td style="padding: 8px; color: #94a3b8;">Business Partner with FI-AP role</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">Invoice (to customer)</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Customer Invoice</td><td style="padding: 8px; color: #94a3b8;">AR document</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">Invoice (from supplier)</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Supplier Invoice</td><td style="padding: 8px; color: #94a3b8;">AP document</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">Payment received</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Incoming Payment</td><td style="padding: 8px; color: #94a3b8;">Customer pays Ayala Land</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">Payment sent</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Outgoing Payment</td><td style="padding: 8px; color: #94a3b8;">Ayala Land pays supplier</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">Collection notices</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Dunning</td><td style="padding: 8px; color: #94a3b8;">Escalating reminder levels</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 8px; color: #64748b;">3-Way Match</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">GR/IR Reconciliation</td><td style="padding: 8px; color: #94a3b8;">Goods Receipt / Invoice Receipt</td></tr>
+        <tr><td style="padding: 8px; color: #64748b;">Payer + Supplier (unified)</td><td style="padding: 8px; color: #64748b;">→</td><td style="padding: 8px; color: #4ade80; font-weight: bold;">Business Partner</td><td style="padding: 8px; color: #94a3b8;">Central master record, role-based</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Top-Level Navigation (Spaces as Sidebar)</h3>
+  <div style="background: #0f172a; border-radius: 12px; overflow: hidden; font-family: monospace; font-size: 12px;">
+    <div style="display: flex; min-height: 520px;">
+
+      <!-- Sidebar -->
+      <div style="width: 220px; background: #003B1F; border-right: 1px solid #005c30; padding: 0; flex-shrink: 0;">
+        <div style="padding: 16px 16px 12px 16px; border-bottom: 1px solid #005c30;">
+          <div style="color: #C5A930; font-weight: bold; font-size: 14px; letter-spacing: 0.5px;">AYALA LAND</div>
+          <div style="color: #7cb894; font-size: 10px; margin-top: 2px;">Collections & Payments Portal</div>
+        </div>
+
+        <div style="padding: 8px;">
+          <div style="color: #7cb894; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; padding: 8px 8px 4px 8px;">Spaces</div>
+
+          <div style="background: rgba(197,169,48,0.15); border-left: 3px solid #C5A930; color: #fff; padding: 10px 12px; border-radius: 0 6px 6px 0; margin-bottom: 2px; font-size: 12px;">
+            <div style="font-weight: bold;">Overview</div>
+            <div style="color: #7cb894; font-size: 10px;">Dashboard & KPIs</div>
+          </div>
+
+          <div style="color: #c8e6d4; padding: 10px 12px; border-radius: 6px; margin-bottom: 2px; font-size: 12px; cursor: pointer;">
+            <div>Accounts Receivable</div>
+            <div style="color: #5a9c72; font-size: 10px;">Customers & Collections</div>
+          </div>
+
+          <div style="color: #c8e6d4; padding: 10px 12px; border-radius: 6px; margin-bottom: 2px; font-size: 12px; cursor: pointer;">
+            <div>Accounts Payable</div>
+            <div style="color: #5a9c72; font-size: 10px;">Suppliers & GR/IR</div>
+          </div>
+
+          <div style="color: #c8e6d4; padding: 10px 12px; border-radius: 6px; margin-bottom: 2px; font-size: 12px; cursor: pointer;">
+            <div>Collections Mgmt</div>
+            <div style="color: #5a9c72; font-size: 10px;">Worklist & Dunning</div>
+          </div>
+
+          <div style="color: #c8e6d4; padding: 10px 12px; border-radius: 6px; margin-bottom: 2px; font-size: 12px; cursor: pointer;">
+            <div>Document Verification</div>
+            <div style="color: #5a9c72; font-size: 10px;">OCR & AI Validation</div>
+          </div>
+
+          <div style="color: #c8e6d4; padding: 10px 12px; border-radius: 6px; margin-bottom: 2px; font-size: 12px; cursor: pointer;">
+            <div>AI Assistant</div>
+            <div style="color: #5a9c72; font-size: 10px;">Natural Language Queries</div>
+          </div>
+
+          <div style="color: #c8e6d4; padding: 10px 12px; border-radius: 6px; margin-bottom: 2px; font-size: 12px; cursor: pointer;">
+            <div>Analytics</div>
+            <div style="color: #5a9c72; font-size: 10px;">Reports & Forecasts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div style="flex: 1; padding: 24px; color: #e2e8f0;">
+        <div style="font-size: 18px; font-weight: bold; margin-bottom: 4px;">Overview</div>
+        <div style="font-size: 12px; color: #94a3b8; margin-bottom: 20px;">Company Code: 1000 — Ayala Land, Inc.</div>
+
+        <!-- KPI Tiles Row -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;">
+          <div style="background: #1e293b; border-radius: 8px; padding: 14px; border-left: 3px solid #22c55e;">
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Total Receivables</div>
+            <div style="color: #fff; font-size: 20px; font-weight: bold; margin-top: 4px;">&#8369;142.8M</div>
+            <div style="color: #4ade80; font-size: 10px; margin-top: 2px;">50 customers</div>
+          </div>
+          <div style="background: #1e293b; border-radius: 8px; padding: 14px; border-left: 3px solid #f59e0b;">
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Overdue Receivables</div>
+            <div style="color: #fbbf24; font-size: 20px; font-weight: bold; margin-top: 4px;">&#8369;18.3M</div>
+            <div style="color: #fb923c; font-size: 10px; margin-top: 2px;">12 customers overdue</div>
+          </div>
+          <div style="background: #1e293b; border-radius: 8px; padding: 14px; border-left: 3px solid #3b82f6;">
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Days Sales Outstanding</div>
+            <div style="color: #60a5fa; font-size: 20px; font-weight: bold; margin-top: 4px;">34 days</div>
+            <div style="color: #94a3b8; font-size: 10px; margin-top: 2px;">Target: ≤ 30 days</div>
+          </div>
+          <div style="background: #1e293b; border-radius: 8px; padding: 14px; border-left: 3px solid #ef4444;">
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Blocked Invoices (AP)</div>
+            <div style="color: #f87171; font-size: 20px; font-weight: bold; margin-top: 4px;">7</div>
+            <div style="color: #f87171; font-size: 10px; margin-top: 2px;">GR/IR mismatch</div>
+          </div>
+        </div>
+
+        <!-- Sections -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Accounts Receivable</div>
+            <div style="background: #1e293b; border-radius: 8px; padding: 12px;">
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Manage Customer Line Items</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Display Customer Balances</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Post Incoming Payments</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0;">QR Payment Links</div>
+            </div>
+          </div>
+          <div>
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Accounts Payable</div>
+            <div style="background: #1e293b; border-radius: 8px; padding: 12px;">
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Manage Supplier Invoices</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Monitor Purchase Orders</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">GR/IR Reconciliation</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0;">Release Blocked Invoices</div>
+            </div>
+          </div>
+          <div>
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Collections & Verification</div>
+            <div style="background: #1e293b; border-radius: 8px; padding: 12px;">
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Process Collections Worklist</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Document Verification (OCR)</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0;">Escalation Queue</div>
+            </div>
+          </div>
+          <div>
+            <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Intelligence</div>
+            <div style="background: #1e293b; border-radius: 8px; padding: 12px;">
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">AI Assistant (Chat)</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0; border-bottom: 1px solid #334155;">Insight Cards</div>
+              <div style="color: #cbd5e1; font-size: 11px; padding: 6px 0;">ML Scoring & Forecasts</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom bar with emulator -->
+    <div style="background: #1e293b; border-top: 1px solid #334155; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="color: #64748b; font-size: 11px;">Logged in as: Josef Bautista (Collections Manager)</div>
+      <div style="background: #C5A930; color: #003B1F; padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+        Customer Emulator ▲
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Space Detail — Pages per Space</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <!-- AR Space -->
+    <div style="background: #0f172a; border: 1px solid #22c55e; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="color: #4ade80; font-weight: bold; font-size: 13px; margin-bottom: 12px; border-bottom: 1px solid #134e2b; padding-bottom: 8px;">Space: Accounts Receivable</div>
+      <div style="color: #e2e8f0; line-height: 2;">
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Page: Overview</div>
+        <div style="padding-left: 12px;">
+          KPI tiles (Total Receivables, Overdue, DSO)<br>
+          Aging analysis chart (30/60/90/120+ days)<br>
+          Top 10 overdue customers
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: Customer Accounts</div>
+        <div style="padding-left: 12px;">
+          Business Partner list (type: Customer)<br>
+          Customer detail → contracts, invoices, payments<br>
+          Customer line items (open / cleared)
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: Incoming Payments</div>
+        <div style="padding-left: 12px;">
+          Payment log (Stripe, BPI, Check, Cash)<br>
+          QR payment link generation<br>
+          Proof-of-payment documents
+        </div>
+      </div>
+    </div>
+
+    <!-- AP Space -->
+    <div style="background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 13px; margin-bottom: 12px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">Space: Accounts Payable</div>
+      <div style="color: #e2e8f0; line-height: 2;">
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Page: Overview</div>
+        <div style="padding-left: 12px;">
+          KPI tiles (Total Payables, Blocked Invoices, Due This Week)<br>
+          Supplier invoice aging<br>
+          GR/IR open items count
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: Supplier Accounts</div>
+        <div style="padding-left: 12px;">
+          Business Partner list (type: Supplier)<br>
+          Supplier detail → POs, invoices, payments<br>
+          Supplier line items (open / cleared)
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: GR/IR Reconciliation</div>
+        <div style="padding-left: 12px;">
+          3-way matching view (PO ↔ Receipt ↔ Invoice)<br>
+          Release blocked invoices<br>
+          Discrepancy drill-down
+        </div>
+      </div>
+    </div>
+
+    <!-- Collections Space -->
+    <div style="background: #0f172a; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="color: #fbbf24; font-weight: bold; font-size: 13px; margin-bottom: 12px; border-bottom: 1px solid #92400e; padding-bottom: 8px;">Space: Collections Management</div>
+      <div style="color: #e2e8f0; line-height: 2;">
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Page: Collections Worklist</div>
+        <div style="padding-left: 12px;">
+          Prioritized customer list (by overdue amount)<br>
+          Process receivables per customer<br>
+          Promise-to-pay tracking
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: Document Verification</div>
+        <div style="padding-left: 12px;">
+          Uploaded proof-of-payment documents<br>
+          OCR extraction results<br>
+          AI validation flags
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: Escalation Queue</div>
+        <div style="padding-left: 12px;">
+          AI-flagged discrepancies<br>
+          Human review workflow<br>
+          Resolution tracking
+        </div>
+      </div>
+    </div>
+
+    <!-- Intelligence Space -->
+    <div style="background: #0f172a; border: 1px solid #a855f7; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="color: #c084fc; font-weight: bold; font-size: 13px; margin-bottom: 12px; border-bottom: 1px solid #581c87; padding-bottom: 8px;">Space: Intelligence</div>
+      <div style="color: #e2e8f0; line-height: 2;">
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Page: AI Assistant</div>
+        <div style="padding-left: 12px;">
+          Natural language queries (Gemini + SQL)<br>
+          Chart generation<br>
+          Follow-up suggestions
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: Insights & Scoring</div>
+        <div style="padding-left: 12px;">
+          Insight cards (AI-generated)<br>
+          Delinquency risk scores<br>
+          Payer segmentation
+        </div>
+        <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-top: 8px;">Page: Analytics</div>
+        <div style="padding-left: 12px;">
+          Cash flow forecasts<br>
+          Collection performance trends<br>
+          Credit risk heatmaps
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

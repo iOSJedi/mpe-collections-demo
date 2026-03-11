@@ -1,0 +1,206 @@
+<h2>QR Code & Payment Flow</h2>
+<p class="subtitle">End-to-end: Generate QR → Scan with phone → Pay via Stripe or BPI</p>
+
+<div class="section">
+  <h3>Flow Overview</h3>
+  <div style="background: #0f172a; border-radius: 12px; padding: 24px; font-family: monospace; font-size: 12px; color: #e2e8f0;">
+    <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 8px; align-items: center; text-align: center;">
+      <div style="border: 2px solid #22c55e; border-radius: 8px; padding: 14px; background: rgba(34,197,94,0.08);">
+        <div style="font-size: 20px; margin-bottom: 4px;">1</div>
+        <div style="color: #4ade80; font-weight: bold; font-size: 11px;">Generate QR</div>
+        <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">Per invoice, in Customer Emulator or admin</div>
+      </div>
+      <div style="color: #334155;">→</div>
+      <div style="border: 2px solid #f59e0b; border-radius: 8px; padding: 14px; background: rgba(245,158,11,0.08);">
+        <div style="font-size: 20px; margin-bottom: 4px;">2</div>
+        <div style="color: #fbbf24; font-weight: bold; font-size: 11px;">Scan QR</div>
+        <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">Phone camera opens /pay URL</div>
+      </div>
+      <div style="color: #334155;">→</div>
+      <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 14px; background: rgba(59,130,246,0.08);">
+        <div style="font-size: 20px; margin-bottom: 4px;">3</div>
+        <div style="color: #60a5fa; font-weight: bold; font-size: 11px;">Payment Page</div>
+        <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">Invoice details pre-filled, choose method</div>
+      </div>
+      <div style="color: #334155;">→</div>
+      <div style="border: 2px solid #a855f7; border-radius: 8px; padding: 14px; background: rgba(168,85,247,0.08);">
+        <div style="font-size: 20px; margin-bottom: 4px;">4</div>
+        <div style="color: #c084fc; font-weight: bold; font-size: 11px;">Confirm</div>
+        <div style="color: #94a3b8; font-size: 10px; margin-top: 4px;">Payment recorded, balance updated</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>QR Code Contents</h3>
+  <div style="background: #0f172a; border-radius: 8px; padding: 20px; font-family: monospace; font-size: 12px; color: #e2e8f0;">
+    <div style="color: #94a3b8; margin-bottom: 12px;">The QR encodes a URL with signed parameters:</div>
+    <div style="background: #1e293b; border-radius: 6px; padding: 12px; font-size: 11px; word-break: break-all; color: #60a5fa;">
+      https://[app-url]/pay?token=eyJhbGciOiJIUzI1NiJ9...
+    </div>
+    <div style="margin-top: 16px; color: #94a3b8; font-size: 11px;">Token payload (JWT-signed to prevent tampering):</div>
+    <div style="background: #1e293b; border-radius: 6px; padding: 12px; margin-top: 8px; font-size: 11px;">
+      <span style="color: #fbbf24;">{</span><br>
+      <span style="padding-left: 16px;"><span style="color: #4ade80;">"inv"</span>: <span style="color: #f0fdf4;">"INV-2026-03-00042"</span>,</span><br>
+      <span style="padding-left: 16px;"><span style="color: #4ade80;">"con"</span>: <span style="color: #f0fdf4;">"ALC-2024-00123"</span>,</span><br>
+      <span style="padding-left: 16px;"><span style="color: #4ade80;">"acct"</span>: <span style="color: #f0fdf4;">"CUST-0017"</span>,</span><br>
+      <span style="padding-left: 16px;"><span style="color: #4ade80;">"amt"</span>: <span style="color: #fb923c;">285000.00</span>,</span><br>
+      <span style="padding-left: 16px;"><span style="color: #4ade80;">"bal"</span>: <span style="color: #fb923c;">285000.00</span>,</span><br>
+      <span style="padding-left: 16px;"><span style="color: #4ade80;">"due"</span>: <span style="color: #f0fdf4;">"2026-03-15"</span>,</span><br>
+      <span style="padding-left: 16px;"><span style="color: #4ade80;">"exp"</span>: <span style="color: #fb923c;">1773800000</span></span><br>
+      <span style="color: #fbbf24;">}</span>
+    </div>
+    <div style="margin-top: 12px; color: #64748b; font-size: 10px;">
+      JWT signed with server secret — prevents URL parameter tampering. Includes expiry for security.
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Payment Page (/pay) — Mobile View</h3>
+  <div style="display: flex; justify-content: center; gap: 24px;">
+
+    <!-- Phone mockup -->
+    <div style="width: 320px; background: #fff; border-radius: 24px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 3px solid #1e293b;">
+      <!-- Status bar -->
+      <div style="background: #003B1F; padding: 8px 16px; display: flex; justify-content: space-between; font-size: 10px; color: #fff;">
+        <span>9:41</span>
+        <span>●●● WiFi ■</span>
+      </div>
+      <!-- Header -->
+      <div style="background: #003B1F; padding: 16px 20px 20px 20px; text-align: center;">
+        <div style="color: #C5A930; font-weight: bold; font-size: 16px; letter-spacing: 0.5px;">AYALA LAND</div>
+        <div style="color: #7cb894; font-size: 11px; margin-top: 2px;">Payment Portal</div>
+      </div>
+      <!-- Content -->
+      <div style="padding: 20px; font-family: -apple-system, sans-serif; font-size: 13px; color: #1e293b;">
+        <!-- Invoice details -->
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; margin-bottom: 16px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Invoice Details</div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="color: #64748b;">Invoice #</span>
+            <span style="font-weight: 600;">INV-2026-03-00042</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="color: #64748b;">Contract</span>
+            <span style="font-weight: 600;">ALC-2024-00123</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="color: #64748b;">Customer</span>
+            <span style="font-weight: 600;">Uniqlo Philippines</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="color: #64748b;">Due Date</span>
+            <span style="font-weight: 600; color: #dc2626;">Mar 15, 2026</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 4px;">
+            <span style="color: #64748b;">Balance Due</span>
+            <span style="font-weight: 700; font-size: 18px; color: #003B1F;">₱285,000.00</span>
+          </div>
+        </div>
+
+        <!-- Payment amount -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Payment Amount</div>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="flex: 1; background: #003B1F; color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 12px; font-weight: 600;">Pay Full</div>
+            <div style="flex: 1; background: #f1f5f9; color: #64748b; padding: 8px; border-radius: 6px; text-align: center; font-size: 12px; border: 1px solid #e2e8f0;">Pay Partial</div>
+          </div>
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; text-align: center; font-size: 16px; font-weight: 700; color: #003B1F;">
+            ₱285,000.00
+          </div>
+        </div>
+
+        <!-- Payment method -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Payment Method</div>
+
+          <!-- Stripe option -->
+          <div style="border: 2px solid #003B1F; border-radius: 8px; padding: 12px; margin-bottom: 8px; background: #f0fdf4;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 16px; height: 16px; border-radius: 50%; background: #003B1F; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px;">✓</div>
+              <span style="font-weight: 600; font-size: 12px;">Credit / Debit Card</span>
+              <span style="margin-left: auto; font-size: 10px; color: #64748b;">via Stripe</span>
+            </div>
+            <!-- Card input mock -->
+            <div style="margin-top: 10px; background: #fff; border: 1px solid #d1d5db; border-radius: 4px; padding: 8px; font-size: 11px; color: #9ca3af;">
+              4242 •••• •••• ••••&nbsp;&nbsp;&nbsp;MM/YY&nbsp;&nbsp;&nbsp;CVC
+            </div>
+          </div>
+
+          <!-- BPI option -->
+          <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fff;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid #d1d5db;"></div>
+              <span style="font-weight: 600; font-size: 12px;">BPI Bank Transfer</span>
+              <span style="margin-left: auto; font-size: 9px; background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 4px;">Manual</span>
+            </div>
+            <div style="margin-top: 6px; font-size: 10px; color: #94a3b8; padding-left: 24px;">
+              Transfer to BPI account, then upload receipt
+            </div>
+          </div>
+        </div>
+
+        <!-- Pay button -->
+        <div style="background: #003B1F; color: #C5A930; padding: 14px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 14px; letter-spacing: 0.5px;">
+          PAY ₱285,000.00
+        </div>
+        <div style="text-align: center; margin-top: 8px; font-size: 9px; color: #94a3b8;">
+          Secured by Stripe • Ayala Land, Inc.
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow notes -->
+    <div style="max-width: 300px; font-family: monospace; font-size: 12px; color: #e2e8f0;">
+      <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Payment Flow Details</div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="color: #4ade80; font-weight: bold; margin-bottom: 4px;">Credit/Debit Card (Stripe)</div>
+        <div style="color: #94a3b8; font-size: 11px; line-height: 1.6;">
+          1. Create PaymentIntent on server<br>
+          2. Stripe Elements renders card input<br>
+          3. Client confirms payment<br>
+          4. Webhook confirms → update invoice balance<br>
+          5. Show success screen with receipt
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="color: #60a5fa; font-weight: bold; margin-bottom: 4px;">BPI Bank Transfer (Emulated)</div>
+        <div style="color: #94a3b8; font-size: 11px; line-height: 1.6;">
+          1. Show BPI account details to transfer to<br>
+          2. Customer transfers externally<br>
+          3. Customer uploads proof-of-payment<br>
+          4. OCR extracts details from receipt<br>
+          5. AI validates → creates incoming payment<br>
+          6. If mismatch → escalation created
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="color: #fbbf24; font-weight: bold; margin-bottom: 4px;">Partial Payment</div>
+        <div style="color: #94a3b8; font-size: 11px; line-height: 1.6;">
+          1. Customer toggles "Pay Partial"<br>
+          2. Editable amount field appears<br>
+          3. Payment recorded for partial amount<br>
+          4. Invoice balance_remaining decremented<br>
+          5. Invoice status → PARTIAL<br>
+          6. New QR generated for remaining balance
+        </div>
+      </div>
+
+      <div>
+        <div style="color: #c084fc; font-weight: bold; margin-bottom: 4px;">QR Generation</div>
+        <div style="color: #94a3b8; font-size: 11px; line-height: 1.6;">
+          Library: <span style="color: #e2e8f0;">qrcode</span> (npm)<br>
+          Renders as SVG/PNG in emulator<br>
+          Scannable by any phone camera<br>
+          JWT-signed URL prevents tampering<br>
+          Expires after configurable window
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

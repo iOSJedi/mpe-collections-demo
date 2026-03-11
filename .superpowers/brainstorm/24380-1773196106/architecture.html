@@ -1,0 +1,119 @@
+<h2>System Architecture — MPE Collections Demo</h2>
+<p class="subtitle">Ayala Land Corporation Collections Portal — Three interfaces, one app</p>
+
+<div class="section">
+  <h3>System Overview</h3>
+  <div style="background: #0a1628; border-radius: 12px; padding: 32px; color: #e2e8f0; font-family: monospace; font-size: 13px; line-height: 1.6;">
+
+    <!-- Three Interfaces -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+      <div style="border: 2px solid #22c55e; border-radius: 8px; padding: 16px; background: rgba(34,197,94,0.08);">
+        <div style="color: #22c55e; font-weight: bold; font-size: 14px; margin-bottom: 8px;">1. Collections Dashboard</div>
+        <div style="color: #94a3b8; font-size: 11px;">Admin / Collections Staff</div>
+        <div style="margin-top: 12px; font-size: 11px; color: #cbd5e1;">
+          ├─ KPI Overview<br>
+          ├─ Payer Management<br>
+          ├─ Payment Verification<br>
+          ├─ AI Insights & Chat<br>
+          ├─ Escalation Queue<br>
+          └─ Analytics
+        </div>
+      </div>
+
+      <div style="border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; background: rgba(245,158,11,0.08);">
+        <div style="color: #f59e0b; font-weight: bold; font-size: 14px; margin-bottom: 8px;">2. Payer Emulator</div>
+        <div style="color: #94a3b8; font-size: 11px;">Popover — Demo as any payer</div>
+        <div style="margin-top: 12px; font-size: 11px; color: #cbd5e1;">
+          ├─ Payer Selector<br>
+          ├─ My Bills / Invoices<br>
+          ├─ QR Code Display<br>
+          ├─ Upload Proof-of-Payment<br>
+          └─ Payment History
+        </div>
+      </div>
+
+      <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 16px; background: rgba(59,130,246,0.08);">
+        <div style="color: #3b82f6; font-weight: bold; font-size: 14px; margin-bottom: 8px;">3. Payment Page</div>
+        <div style="color: #94a3b8; font-size: 11px;">Public /pay route — QR scan target</div>
+        <div style="margin-top: 12px; font-size: 11px; color: #cbd5e1;">
+          ├─ Invoice Details (from QR)<br>
+          ├─ Pay Full / Partial<br>
+          ├─ Stripe Checkout<br>
+          └─ BPI Transfer (emulated)
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Flow -->
+    <div style="text-align: center; color: #64748b; margin-bottom: 16px; font-size: 12px;">
+      ▼ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ▼ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ▼
+    </div>
+
+    <!-- API Layer -->
+    <div style="border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 16px; background: rgba(51,65,85,0.3);">
+      <div style="color: #e2e8f0; font-weight: bold; margin-bottom: 8px;">Next.js API Routes</div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 11px;">
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/payers</div>
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/invoices</div>
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/payments</div>
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/chat</div>
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/ocr</div>
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/escalations</div>
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/kpi</div>
+        <div style="background: #1e293b; padding: 8px; border-radius: 4px; text-align: center;">/api/stripe</div>
+      </div>
+    </div>
+
+    <!-- Services -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: rgba(51,65,85,0.2);">
+        <div style="color: #a78bfa; font-weight: bold; font-size: 12px; margin-bottom: 6px;">Gemini AI</div>
+        <div style="font-size: 10px; color: #94a3b8;">
+          • SQL chat (collections queries)<br>
+          • OCR extraction (multimodal)<br>
+          • Document validation<br>
+          • Discrepancy flagging
+        </div>
+      </div>
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: rgba(51,65,85,0.2);">
+        <div style="color: #f472b6; font-weight: bold; font-size: 12px; margin-bottom: 6px;">Stripe</div>
+        <div style="font-size: 10px; color: #94a3b8;">
+          • Payment Intents<br>
+          • Checkout (card input)<br>
+          • Webhook receipts
+        </div>
+      </div>
+      <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: rgba(51,65,85,0.2);">
+        <div style="color: #fb923c; font-weight: bold; font-size: 12px; margin-bottom: 6px;">ML Pipeline</div>
+        <div style="font-size: 10px; color: #94a3b8;">
+          • Payer segmentation<br>
+          • Delinquency risk<br>
+          • Credit risk scoring<br>
+          • Cash flow forecast
+        </div>
+      </div>
+    </div>
+
+    <!-- Database -->
+    <div style="border: 1px solid #334155; border-radius: 8px; padding: 16px; background: rgba(51,65,85,0.2);">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div>
+          <div style="color: #38bdf8; font-weight: bold; font-size: 12px; margin-bottom: 8px;">Supabase PostgreSQL</div>
+          <div style="font-size: 10px; color: #94a3b8;">
+            payers • contracts • invoices • payments<br>
+            documents • escalations • qr_codes<br>
+            payer_segments • delinquency_scores<br>
+            credit_risk_scores • insight_cards
+          </div>
+        </div>
+        <div>
+          <div style="color: #34d399; font-weight: bold; font-size: 12px; margin-bottom: 8px;">Firebase</div>
+          <div style="font-size: 10px; color: #94a3b8;">
+            Auth (Google OAuth — admin)<br>
+            Realtime DB (escalation notifications)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

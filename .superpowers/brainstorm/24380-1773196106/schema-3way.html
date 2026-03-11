@@ -1,0 +1,223 @@
+<h2>3-Way Matching Schema Addition</h2>
+<p class="subtitle">Procurement side — matching PO, Invoice, and Goods Receipt for Ayala Land suppliers</p>
+
+<div class="section">
+  <h3>How 3-Way Matching Works</h3>
+  <div style="background: #0f172a; border-radius: 8px; padding: 24px; font-family: monospace; font-size: 13px; color: #e2e8f0;">
+    <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: center; text-align: center; margin-bottom: 20px;">
+      <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 16px; background: rgba(59,130,246,0.1);">
+        <div style="color: #60a5fa; font-weight: bold; font-size: 14px;">Purchase Order</div>
+        <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">What Ayala Land ordered</div>
+      </div>
+      <div style="color: #64748b; font-size: 20px;">&#8596;</div>
+      <div style="border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; background: rgba(245,158,11,0.1);">
+        <div style="color: #fbbf24; font-weight: bold; font-size: 14px;">Goods / Service Receipt</div>
+        <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">What was actually delivered</div>
+      </div>
+      <div style="color: #64748b; font-size: 20px;">&#8596;</div>
+      <div style="border: 2px solid #22c55e; border-radius: 8px; padding: 16px; background: rgba(34,197,94,0.1);">
+        <div style="color: #4ade80; font-weight: bold; font-size: 14px;">Supplier Invoice</div>
+        <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">What supplier is billing for</div>
+      </div>
+    </div>
+    <div style="text-align: center; color: #64748b; font-size: 12px; border-top: 1px solid #1e293b; padding-top: 12px;">
+      Match checks: PO number consistency &bull; Amount alignment &bull; Supplier identity &bull; Quantities &bull; Paid/Unpaid status
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>New Tables</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <!-- suppliers -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">suppliers</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">supplier_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #f0fdf4;">name</span> <span style="color: #64748b;">varchar — e.g. "SteelAsia Manufacturing"</span><br>
+        <span style="color: #f0fdf4;">category</span> <span style="color: #64748b;">varchar — e.g. "Steel & Rebar"</span><br>
+        <span style="color: #f0fdf4;">type</span> <span style="color: #64748b;">enum CONTRACTOR | SUPPLIER | CONSULTANT | SERVICE_PROVIDER</span><br>
+        <span style="color: #f0fdf4;">contact_person</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">email</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">phone</span> <span style="color: #64748b;">varchar</span><br>
+        <span style="color: #f0fdf4;">tax_id</span> <span style="color: #64748b;">varchar — TIN</span><br>
+        <span style="color: #f0fdf4;">bank_details</span> <span style="color: #64748b;">jsonb — for payment</span><br>
+        <span style="color: #f0fdf4;">status</span> <span style="color: #64748b;">enum ACTIVE | INACTIVE | BLACKLISTED</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- purchase_orders -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">purchase_orders</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">po_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #f0fdf4;">po_number</span> <span style="color: #64748b;">varchar unique — e.g. "PO-2026-00451"</span><br>
+        <span style="color: #fb923c;">supplier_id</span> <span style="color: #64748b;">FK → suppliers</span><br>
+        <span style="color: #f0fdf4;">project_name</span> <span style="color: #64748b;">varchar — e.g. "Parklinks Tower 3"</span><br>
+        <span style="color: #f0fdf4;">description</span> <span style="color: #64748b;">text — what's being ordered</span><br>
+        <span style="color: #f0fdf4;">total_amount</span> <span style="color: #64748b;">decimal (PHP)</span><br>
+        <span style="color: #f0fdf4;">issued_date</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">expected_delivery</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">status</span> <span style="color: #64748b;">enum OPEN | PARTIALLY_RECEIVED | FULLY_RECEIVED | CLOSED | CANCELLED</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- goods_receipts -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">goods_receipts</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">receipt_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">po_id</span> <span style="color: #64748b;">FK → purchase_orders</span><br>
+        <span style="color: #fb923c;">supplier_id</span> <span style="color: #64748b;">FK → suppliers</span><br>
+        <span style="color: #f0fdf4;">receipt_number</span> <span style="color: #64748b;">varchar — e.g. "GR-2026-00812"</span><br>
+        <span style="color: #f0fdf4;">received_date</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">received_by</span> <span style="color: #64748b;">varchar — site engineer name</span><br>
+        <span style="color: #f0fdf4;">description</span> <span style="color: #64748b;">text — what was received</span><br>
+        <span style="color: #f0fdf4;">quantity_received</span> <span style="color: #64748b;">decimal</span><br>
+        <span style="color: #f0fdf4;">unit</span> <span style="color: #64748b;">varchar — e.g. "tons", "units", "sqm"</span><br>
+        <span style="color: #f0fdf4;">amount</span> <span style="color: #64748b;">decimal — value of goods received</span><br>
+        <span style="color: #f0fdf4;">condition_notes</span> <span style="color: #64748b;">text nullable</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+
+    <!-- supplier_invoices -->
+    <div style="background: #0f172a; border: 1px solid #1e40af; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #60a5fa; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px;">supplier_invoices</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">supplier_invoice_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">supplier_id</span> <span style="color: #64748b;">FK → suppliers</span><br>
+        <span style="color: #fb923c;">po_id</span> <span style="color: #64748b;">FK → purchase_orders</span><br>
+        <span style="color: #f0fdf4;">invoice_number</span> <span style="color: #64748b;">varchar — supplier's own invoice #</span><br>
+        <span style="color: #f0fdf4;">amount</span> <span style="color: #64748b;">decimal (PHP)</span><br>
+        <span style="color: #f0fdf4;">submitted_date</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">due_date</span> <span style="color: #64748b;">date</span><br>
+        <span style="color: #f0fdf4;">payment_status</span> <span style="color: #64748b;">enum UNPAID | PARTIAL | PAID</span><br>
+        <span style="color: #f0fdf4;">amount_paid</span> <span style="color: #64748b;">decimal — tracks partial payments</span><br>
+        <span style="color: #f0fdf4;">payment_date</span> <span style="color: #64748b;">date nullable</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>The Match Table</h3>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+
+    <!-- three_way_matches -->
+    <div style="background: #0f172a; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px;">
+      <div style="color: #fbbf24; font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #92400e; padding-bottom: 8px;">three_way_matches</div>
+      <div style="color: #e2e8f0; line-height: 1.8;">
+        <span style="color: #fbbf24;">match_id</span> <span style="color: #64748b;">serial PK</span><br>
+        <span style="color: #fb923c;">po_id</span> <span style="color: #64748b;">FK → purchase_orders</span><br>
+        <span style="color: #fb923c;">receipt_id</span> <span style="color: #64748b;">FK → goods_receipts</span><br>
+        <span style="color: #fb923c;">supplier_invoice_id</span> <span style="color: #64748b;">FK → supplier_invoices</span><br>
+        <span style="color: #fb923c;">supplier_id</span> <span style="color: #64748b;">FK → suppliers</span><br>
+        <span style="color: #f0fdf4;">match_status</span> <span style="color: #64748b;">enum FULL_MATCH | PARTIAL_MATCH | MISMATCH | PENDING_REVIEW</span><br>
+        <span style="color: #f0fdf4;">po_amount</span> <span style="color: #64748b;">decimal — snapshot for comparison</span><br>
+        <span style="color: #f0fdf4;">receipt_amount</span> <span style="color: #64748b;">decimal — snapshot for comparison</span><br>
+        <span style="color: #f0fdf4;">invoice_amount</span> <span style="color: #64748b;">decimal — snapshot for comparison</span><br>
+        <span style="color: #f0fdf4;">discrepancies</span> <span style="color: #64748b;">jsonb — array of {field, expected, actual, severity}</span><br>
+        <span style="color: #f0fdf4;">ai_notes</span> <span style="color: #64748b;">text — Gemini's analysis of the match</span><br>
+        <span style="color: #f0fdf4;">reviewed_by</span> <span style="color: #64748b;">varchar nullable</span><br>
+        <span style="color: #f0fdf4;">reviewed_at</span> <span style="color: #64748b;">timestamp nullable</span><br>
+        <span style="color: #f0fdf4;">created_at</span> <span style="color: #64748b;">timestamp</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Seeded Suppliers (20 — Real Ayala Land Ecosystem)</h3>
+  <div style="background: #0f172a; border-radius: 8px; padding: 16px; font-size: 12px; overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; color: #e2e8f0; font-family: monospace;">
+      <thead>
+        <tr style="border-bottom: 1px solid #334155; color: #94a3b8; font-size: 11px; text-align: left;">
+          <th style="padding: 8px;">#</th>
+          <th style="padding: 8px;">Supplier Name</th>
+          <th style="padding: 8px;">Category</th>
+          <th style="padding: 8px;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">1</td><td style="padding: 6px 8px;">SteelAsia Manufacturing Corp.</td><td style="padding: 6px 8px; color: #94a3b8;">Steel & Rebar</td><td style="padding: 6px 8px; color: #3b82f6;">SUPPLIER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">2</td><td style="padding: 6px 8px;">Holcim Philippines, Inc.</td><td style="padding: 6px 8px; color: #94a3b8;">Cement & Concrete</td><td style="padding: 6px 8px; color: #3b82f6;">SUPPLIER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">3</td><td style="padding: 6px 8px;">Republic Cement & Building Materials</td><td style="padding: 6px 8px; color: #94a3b8;">Cement</td><td style="padding: 6px 8px; color: #3b82f6;">SUPPLIER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">4</td><td style="padding: 6px 8px;">Eagle Cement Corporation</td><td style="padding: 6px 8px; color: #94a3b8;">Cement</td><td style="padding: 6px 8px; color: #3b82f6;">SUPPLIER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">5</td><td style="padding: 6px 8px;">Megawide Construction Corp.</td><td style="padding: 6px 8px; color: #94a3b8;">General Contractor</td><td style="padding: 6px 8px; color: #22c55e;">CONTRACTOR</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">6</td><td style="padding: 6px 8px;">EEI Corporation</td><td style="padding: 6px 8px; color: #94a3b8;">General Contractor</td><td style="padding: 6px 8px; color: #22c55e;">CONTRACTOR</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">7</td><td style="padding: 6px 8px;">MC Engineering, Inc.</td><td style="padding: 6px 8px; color: #94a3b8;">MEP Contractor</td><td style="padding: 6px 8px; color: #22c55e;">CONTRACTOR</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">8</td><td style="padding: 6px 8px;">GNQ Industrial & Contracting Corp.</td><td style="padding: 6px 8px; color: #94a3b8;">HVAC Contractor</td><td style="padding: 6px 8px; color: #22c55e;">CONTRACTOR</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">9</td><td style="padding: 6px 8px;">KONE Philippines</td><td style="padding: 6px 8px; color: #94a3b8;">Elevators & Escalators</td><td style="padding: 6px 8px; color: #3b82f6;">SUPPLIER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">10</td><td style="padding: 6px 8px;">Otis Elevator Company Philippines</td><td style="padding: 6px 8px; color: #94a3b8;">Elevators & Escalators</td><td style="padding: 6px 8px; color: #3b82f6;">SUPPLIER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">11</td><td style="padding: 6px 8px;">Palafox Associates</td><td style="padding: 6px 8px; color: #94a3b8;">Architecture & Design</td><td style="padding: 6px 8px; color: #f59e0b;">CONSULTANT</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">12</td><td style="padding: 6px 8px;">AECOM Philippines</td><td style="padding: 6px 8px; color: #94a3b8;">Engineering Consulting</td><td style="padding: 6px 8px; color: #f59e0b;">CONSULTANT</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">13</td><td style="padding: 6px 8px;">Servicio Filipino, Inc.</td><td style="padding: 6px 8px; color: #94a3b8;">Facilities Management</td><td style="padding: 6px 8px; color: #a855f7;">SERVICE_PROVIDER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">14</td><td style="padding: 6px 8px;">ServiceMaster Philippines</td><td style="padding: 6px 8px; color: #94a3b8;">Facilities / Cleaning</td><td style="padding: 6px 8px; color: #a855f7;">SERVICE_PROVIDER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">15</td><td style="padding: 6px 8px;">SAP SE</td><td style="padding: 6px 8px; color: #94a3b8;">Enterprise Software</td><td style="padding: 6px 8px; color: #a855f7;">SERVICE_PROVIDER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">16</td><td style="padding: 6px 8px;">Tata Consultancy Services</td><td style="padding: 6px 8px; color: #94a3b8;">IT Services</td><td style="padding: 6px 8px; color: #a855f7;">SERVICE_PROVIDER</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">17</td><td style="padding: 6px 8px;">PwC Isla Lipana & Co.</td><td style="padding: 6px 8px; color: #94a3b8;">Audit & Advisory</td><td style="padding: 6px 8px; color: #f59e0b;">CONSULTANT</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">18</td><td style="padding: 6px 8px;">ACCRALAW</td><td style="padding: 6px 8px; color: #94a3b8;">Legal Services</td><td style="padding: 6px 8px; color: #f59e0b;">CONSULTANT</td></tr>
+        <tr style="border-bottom: 1px solid #1e293b;"><td style="padding: 6px 8px; color: #64748b;">19</td><td style="padding: 6px 8px;">FPG Insurance</td><td style="padding: 6px 8px; color: #94a3b8;">Insurance & Surety</td><td style="padding: 6px 8px; color: #a855f7;">SERVICE_PROVIDER</td></tr>
+        <tr><td style="padding: 6px 8px; color: #64748b;">20</td><td style="padding: 6px 8px;">Pacific Paint (Boysen) Philippines</td><td style="padding: 6px 8px; color: #94a3b8;">Paints & Coatings</td><td style="padding: 6px 8px; color: #3b82f6;">SUPPLIER</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h3>3-Way Match View (Admin Dashboard)</h3>
+  <div style="background: #0f172a; border-radius: 8px; padding: 20px; color: #e2e8f0; font-family: monospace; font-size: 12px;">
+    <div style="margin-bottom: 16px; color: #94a3b8;">The UI surfaces a table with match status per PO, filterable by supplier, project, and status:</div>
+    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+      <thead>
+        <tr style="border-bottom: 1px solid #334155; color: #64748b; text-align: left;">
+          <th style="padding: 8px;">PO #</th>
+          <th style="padding: 8px;">Supplier</th>
+          <th style="padding: 8px;">Project</th>
+          <th style="padding: 8px;">PO Amt</th>
+          <th style="padding: 8px;">Receipt Amt</th>
+          <th style="padding: 8px;">Invoice Amt</th>
+          <th style="padding: 8px;">Status</th>
+          <th style="padding: 8px;">Payment</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #1e293b;">
+          <td style="padding: 8px; color: #60a5fa;">PO-2026-00451</td>
+          <td style="padding: 8px;">SteelAsia Mfg.</td>
+          <td style="padding: 8px; color: #94a3b8;">Parklinks T3</td>
+          <td style="padding: 8px;">&#8369;4.2M</td>
+          <td style="padding: 8px;">&#8369;4.2M</td>
+          <td style="padding: 8px;">&#8369;4.2M</td>
+          <td style="padding: 8px;"><span style="background: #166534; color: #4ade80; padding: 2px 8px; border-radius: 4px; font-size: 10px;">FULL MATCH</span></td>
+          <td style="padding: 8px;"><span style="color: #4ade80;">PAID</span></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1e293b;">
+          <td style="padding: 8px; color: #60a5fa;">PO-2026-00467</td>
+          <td style="padding: 8px;">Holcim PH</td>
+          <td style="padding: 8px; color: #94a3b8;">Arca South P2</td>
+          <td style="padding: 8px;">&#8369;1.8M</td>
+          <td style="padding: 8px;">&#8369;1.8M</td>
+          <td style="padding: 8px; color: #fbbf24;">&#8369;2.1M</td>
+          <td style="padding: 8px;"><span style="background: #92400e; color: #fbbf24; padding: 2px 8px; border-radius: 4px; font-size: 10px;">MISMATCH</span></td>
+          <td style="padding: 8px;"><span style="color: #f87171;">UNPAID</span></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1e293b;">
+          <td style="padding: 8px; color: #60a5fa;">PO-2026-00489</td>
+          <td style="padding: 8px;">MC Engineering</td>
+          <td style="padding: 8px; color: #94a3b8;">One Ayala</td>
+          <td style="padding: 8px;">&#8369;6.5M</td>
+          <td style="padding: 8px;">&#8369;5.1M</td>
+          <td style="padding: 8px;">&#8369;5.1M</td>
+          <td style="padding: 8px;"><span style="background: #1e3a5f; color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 10px;">PARTIAL</span></td>
+          <td style="padding: 8px;"><span style="color: #fbbf24;">PARTIAL</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
