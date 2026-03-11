@@ -42,7 +42,7 @@ export function InsightCardComponent({ insight }: InsightCardComponentProps) {
     const question = insight.related_intent
       ? `Tell me more about: ${insight.title}`
       : `Explain this insight: ${insight.title}`
-    router.push(`/chat?q=${encodeURIComponent(question)}`)
+    router.push(`/intelligence?q=${encodeURIComponent(question)}`)
   }
 
   return (

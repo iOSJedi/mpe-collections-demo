@@ -7,7 +7,7 @@ import { LoginPage } from '@/components/auth/LoginPage'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageLoadingSpinner } from '@/components/ui/page-loading-spinner'
 import { useAppDispatch, useAppSelector } from '@/store'
-import { setActiveView } from '@/store/slices/navSlice'
+import { navigate } from '@/store/slices/navSlice'
 import {
   addMessage,
   setLoading,
@@ -101,9 +101,9 @@ function ChatContent({ sendQuestion }: { sendQuestion: (q: string) => void }) {
         {/* Header */}
         <div className="px-4 py-3 border-b bg-background/80 backdrop-blur-sm flex-shrink-0 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-primary">Ask your data</h1>
+            <h1 className="text-lg font-semibold text-primary">AI Assistant</h1>
             <p className="text-xs text-muted-foreground">
-              Get answers, charts, and insights from your business data
+              Ask questions about receivables, payables, collections, and risk data
             </p>
           </div>
           {messages.length > 0 && (
@@ -169,7 +169,7 @@ function ChatContent({ sendQuestion }: { sendQuestion: (q: string) => void }) {
   )
 }
 
-function ChatPageWithParams() {
+function IntelligencePageWithParams() {
   const searchParams = useSearchParams()
   const { messages, isLoading } = useAppSelector((state) => state.chat)
   const sendQuestion = useSendQuestion()
@@ -189,15 +189,15 @@ function ChatPageWithParams() {
   return <ChatContent sendQuestion={sendQuestion} />
 }
 
-export default function ChatPage() {
+export default function IntelligencePage() {
   const { user, loading } = useAuth()
   const dispatch = useAppDispatch()
 
   useEffect(() => {
-    dispatch(setActiveView('chat'))
+    dispatch(navigate({ space: 'intelligence', page: 'ai-assistant' }))
   }, [dispatch])
 
-  if (loading) return <PageLoadingSpinner message="Loading chat..." />
+  if (loading) return <PageLoadingSpinner message="Loading AI assistant..." />
 
   if (!user) return <LoginPage />
 
@@ -206,11 +206,11 @@ export default function ChatPage() {
       <Suspense
         fallback={
           <div className="h-full flex items-center justify-center">
-            <p className="text-muted-foreground text-sm">Loading chat...</p>
+            <p className="text-muted-foreground text-sm">Loading AI assistant...</p>
           </div>
         }
       >
-        <ChatPageWithParams />
+        <IntelligencePageWithParams />
       </Suspense>
     </AppShell>
   )
