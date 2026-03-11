@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { apiFetch } from '@/lib/api'
 import { DocumentRecord, OcrResult, ValidationCheck } from '@/types'
 
 const OCR_STATUS_BADGE: Record<string, string> = {
@@ -104,7 +105,7 @@ export function DocumentVerification() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/documents')
+      const res = await apiFetch('/api/documents')
       if (!res.ok) throw new Error('Failed to load documents')
       const data: DocumentRecord[] = await res.json()
       setDocs(data)

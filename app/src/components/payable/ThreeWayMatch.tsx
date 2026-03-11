@@ -74,7 +74,7 @@ export function ThreeWayMatch() {
         }
       }
       // Fetch all suppliers for filter dropdown
-      const suppRes = await fetch('/api/payable?limit=200')
+      const suppRes = await apiFetch('/api/payable?limit=200')
       if (suppRes.ok) {
         const suppData = await suppRes.json()
         for (const s of suppData) {
@@ -101,7 +101,7 @@ export function ThreeWayMatch() {
   }
 
   const handleAction = async (matchId: number, action: 'APPROVE' | 'BLOCK') => {
-    const res = await fetch('/api/payable/matching', {
+    const res = await apiFetch('/api/payable/matching', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ matchId, action }),

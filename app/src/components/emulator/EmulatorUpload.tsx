@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, DragEvent, ChangeEvent } from 'react'
+import { apiFetch } from '@/lib/api'
 
 interface OcrResult {
   payment_amount: number | null
@@ -89,7 +90,7 @@ export function EmulatorUpload({ customerId, invoiceId }: EmulatorUploadProps) {
         formData.append('invoiceId', String(invoiceId))
       }
 
-      const uploadRes = await fetch('/api/documents', {
+      const uploadRes = await apiFetch('/api/documents', {
         method: 'POST',
         body: formData,
       })
@@ -105,7 +106,7 @@ export function EmulatorUpload({ customerId, invoiceId }: EmulatorUploadProps) {
       // Step 2: Trigger OCR
       setUploadProgress('ocr')
 
-      const ocrRes = await fetch('/api/ocr', {
+      const ocrRes = await apiFetch('/api/ocr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentId }),

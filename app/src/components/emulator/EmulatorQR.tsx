@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { apiFetch } from '@/lib/api'
 
 interface QrData {
   qrDataUrl: string
@@ -36,7 +37,7 @@ export function EmulatorQR({ invoiceId }: EmulatorQRProps) {
     setError(null)
     setQrData(null)
 
-    fetch('/api/qr', {
+    apiFetch('/api/qr', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoiceId }),
