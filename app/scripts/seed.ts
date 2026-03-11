@@ -20,6 +20,7 @@
 
 import 'dotenv/config'
 import { drizzle } from 'drizzle-orm/pg-proxy'
+import { sql } from 'drizzle-orm'
 import * as schema from '../src/db/schema'
 
 // ─── DB Connection (same proxy pattern as db/index.ts) ───────────────────────
@@ -48,7 +49,12 @@ const db = drizzle(async (sql, params, method) => {
   }
 
   const { rows } = await response.json()
-  return { rows }
+  // Drizzle's mapResultRow expects positional value arrays, not key-value objects.
+  // The SQL proxy returns row objects (snake_case keys); convert to ordered arrays.
+  const arrayRows = rows.map((row: Record<string, unknown> | unknown[]) =>
+    Array.isArray(row) ? row : Object.values(row)
+  )
+  return { rows: arrayRows }
 }, { schema })
 
 // ─── Seeded PRNG (Mulberry32) ─────────────────────────────────────────────────
@@ -235,6 +241,42 @@ const BILLING_MONTHS = [
 
 async function main() {
   console.log('🌱 Starting Ayala Land Payments Portal seed...\n')
+
+  // ── 0. TRUNCATE ALL TABLES (idempotent re-run) ─────────────────────────────
+
+  // Ensure supplier_invoices_col has created_at (missing in original DDL)
+  await db.execute(sql.raw(`
+    ALTER TABLE supplier_invoices_col
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()
+  `))
+
+  console.log('Truncating all tables...')
+  // Use CASCADE to handle FK dependencies in one shot; RESTART IDENTITY resets serials.
+  const tables = [
+    'cash_flow_forecasts_col',
+    'escalations_col',
+    'documents_col',
+    'insight_cards_col',
+    'payment_patterns_col',
+    'credit_risk_scores_col',
+    'delinquency_scores_col',
+    'payer_segments_col',
+    'three_way_matches_col',
+    'outgoing_payments_col',
+    'supplier_invoices_col',
+    'goods_receipts_col',
+    'purchase_orders_col',
+    'suppliers_col',
+    'incoming_payments_col',
+    'qr_codes_col',
+    'invoices_col',
+    'contracts_col',
+    'customers_col',
+  ]
+  for (const table of tables) {
+    await db.execute(sql.raw(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`))
+  }
+  console.log('  Tables truncated\n')
 
   // ── 1. INSERT CUSTOMERS ────────────────────────────────────────────────────
 

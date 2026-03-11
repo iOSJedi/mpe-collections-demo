@@ -196,7 +196,8 @@ CREATE TABLE supplier_invoices_col (
   due_date            DATE          NOT NULL,
   payment_status      VARCHAR(20)   NOT NULL DEFAULT 'UNPAID',  -- UNPAID | PARTIAL | PAID
   amount_paid         NUMERIC(12,2) NOT NULL DEFAULT 0,
-  payment_date        DATE
+  payment_date        DATE,
+  created_at          TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX idx_si_supplier_col ON supplier_invoices_col(supplier_id);
 CREATE INDEX idx_si_po_col       ON supplier_invoices_col(po_id);

@@ -27,7 +27,10 @@ Deno.serve(async (req) => {
   try {
     const { sql: query, params, method } = await req.json();
     const result = await sql.unsafe(query, params || []);
-    const rows = Array.from(result);
+    // Drizzle's mapResultRow expects rows as positional value arrays, not key-value objects.
+    // postgres.js returns row objects; convert each row to an ordered array of values.
+    // Object.values() preserves insertion order, which matches the SQL column order.
+    const rows = Array.from(result).map((row) => Object.values(row as Record<string, unknown>));
     return Response.json({ rows });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
