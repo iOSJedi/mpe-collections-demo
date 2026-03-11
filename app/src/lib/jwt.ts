@@ -4,7 +4,7 @@ import { QrPayload } from '@/types'
 const SECRET = process.env.QR_JWT_SECRET || 'demo-secret-change-in-production'
 
 export function signQrToken(payload: QrPayload): string {
-  return jwt.sign(payload, SECRET, { expiresIn: '24h' })
+  return jwt.sign(payload, SECRET)
 }
 
 export function verifyQrToken(token: string): QrPayload {
