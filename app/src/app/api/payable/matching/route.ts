@@ -81,10 +81,10 @@ export const GET = withAuth(async (request: NextRequest) => {
       supplier_invoice_id: r.supplier_invoice_id ?? undefined,
       receipt_id: r.receipt_id ?? undefined,
       po_description: r.po_description ?? null,
-      po_issued_date: r.po_issued_date ?? null,
+      po_issued_date: r.po_issued_date ? String(r.po_issued_date) : null,
       invoice_number: r.invoice_number ?? null,
-      invoice_submitted_date: r.invoice_submitted_date ?? null,
-      invoice_due_date: r.invoice_due_date ?? null,
+      invoice_submitted_date: r.invoice_submitted_date ? String(r.invoice_submitted_date) : null,
+      invoice_due_date: r.invoice_due_date ? String(r.invoice_due_date) : null,
     } as ThreeWayMatchRow)
     )
 

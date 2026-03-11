@@ -59,6 +59,16 @@ export function MatchDetail({ match, onClose, onAction }: MatchDetailProps) {
 
   const amountMismatch = match.invoice_amount !== match.po_amount
 
+  // Defensive: discrepancies may arrive as a JSON string from pg-proxy
+  const discrepancies: MatchDetailProps['match']['discrepancies'] = (() => {
+    const raw = match.discrepancies
+    if (!raw) return null
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) } catch { return null }
+    }
+    return Array.isArray(raw) ? raw : null
+  })()
+
   return (
     // Overlay
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -131,11 +141,11 @@ export function MatchDetail({ match, onClose, onAction }: MatchDetailProps) {
           </div>
 
           {/* Discrepancies */}
-          {match.discrepancies && match.discrepancies.length > 0 && (
+          {discrepancies && discrepancies.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <h4 className="text-sm font-semibold text-red-700 mb-3">Discrepancies</h4>
               <ul className="space-y-2">
-                {match.discrepancies.map((d, i) => (
+                {discrepancies.map((d, i) => (
                   <li key={i} className="text-sm text-red-700 flex items-start gap-2">
                     <span className="text-red-400 mt-0.5">&#9679;</span>
                     <span>
@@ -144,7 +154,7 @@ export function MatchDetail({ match, onClose, onAction }: MatchDetailProps) {
                   </li>
                 ))}
               </ul>
-              {amountMismatch && !match.discrepancies.some(d => d.field.toLowerCase().includes('amount')) && (
+              {amountMismatch && !discrepancies.some(d => d.field?.toLowerCase().includes('amount')) && (
                 <li className="text-sm text-red-700 flex items-start gap-2 mt-2 list-none">
                   <span className="text-red-400 mt-0.5">&#9679;</span>
                   <span>
@@ -156,7 +166,7 @@ export function MatchDetail({ match, onClose, onAction }: MatchDetailProps) {
           )}
 
           {/* Auto-generated amount mismatch note if no discrepancies array but amounts differ */}
-          {amountMismatch && (!match.discrepancies || match.discrepancies.length === 0) && (
+          {amountMismatch && (!discrepancies || discrepancies.length === 0) && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <h4 className="text-sm font-semibold text-red-700 mb-2">Discrepancies</h4>
               <p className="text-sm text-red-700">
