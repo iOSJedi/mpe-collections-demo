@@ -11,7 +11,12 @@ import {
   ChevronRight,
   ChevronLeft,
   Menu,
+  Settings,
+  DatabaseZap,
+  Loader2,
+  X,
 } from 'lucide-react'
+import { apiFetch } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import { useAppDispatch, useAppSelector } from '@/store'
 import { navigate } from '@/store/slices/navSlice'
@@ -90,6 +95,9 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [expandedSpaces, setExpandedSpaces] = useState<Set<NavSpace>>(new Set([activeSpace]))
   const [hasOpenEscalations, setHasOpenEscalations] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+  const [seedResult, setSeedResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   // Subscribe to Firebase RTDB for open escalation notifications
   useEffect(() => {
@@ -243,6 +251,93 @@ export function Sidebar() {
           )
         })}
       </div>
+
+      {/* Settings button */}
+      <div className="border-t border-white/10 px-3 py-3">
+        <button
+          onClick={() => setShowSettings(s => !s)}
+          className={cn(
+            'w-full flex items-center gap-2 px-2 py-2 text-xs rounded transition-colors',
+            'hover:bg-white/10',
+            showSettings ? 'bg-white/10' : ''
+          )}
+          style={{ color: 'rgba(255,255,255,0.65)' }}
+        >
+          <Settings className="w-4 h-4 shrink-0" />
+          {!collapsed && <span>Settings</span>}
+        </button>
+      </div>
+
+      {/* Settings panel (overlay) */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSettings(false)} />
+          <div className="relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+              <h3 className="font-semibold text-slate-900">Settings</h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-slate-700 mb-1">Demo Data</h4>
+                <p className="text-xs text-slate-500 mb-3">
+                  Reset all tables and re-seed with fresh synthetic data. This replaces all existing records.
+                </p>
+                <button
+                  onClick={async () => {
+                    if (seeding) return
+                    setSeedResult(null)
+                    setSeeding(true)
+                    try {
+                      const res = await apiFetch('/api/seed', { method: 'POST' })
+                      if (!res.ok) {
+                        const data = await res.json()
+                        setSeedResult({ ok: false, message: data.error || 'Seed failed' })
+                      } else {
+                        setSeedResult({ ok: true, message: 'Data re-seeded successfully. Refresh the page to see new data.' })
+                      }
+                    } catch (err) {
+                      setSeedResult({ ok: false, message: err instanceof Error ? err.message : 'Unknown error' })
+                    } finally {
+                      setSeeding(false)
+                    }
+                  }}
+                  disabled={seeding}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: '#003B1F', color: '#fff' }}
+                >
+                  {seeding ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Re-seeding data...
+                    </>
+                  ) : (
+                    <>
+                      <DatabaseZap className="w-4 h-4" />
+                      Re-seed Demo Data
+                    </>
+                  )}
+                </button>
+              </div>
+              {seedResult && (
+                <div className={cn(
+                  'text-xs px-3 py-2 rounded-lg border',
+                  seedResult.ok
+                    ? 'bg-green-50 border-green-200 text-green-700'
+                    : 'bg-red-50 border-red-200 text-red-700'
+                )}>
+                  {seedResult.message}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }
