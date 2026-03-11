@@ -20,8 +20,13 @@ export const db = drizzle(async (sql, params, method) => {
   }
 
   const { rows } = await response.json()
-  // Drizzle's mapResultRow expects positional value arrays, not key-value objects.
-  // The SQL proxy returns row objects (snake_case keys); convert to ordered arrays.
+
+  // For typed queries ('all'), Drizzle's mapResultRow expects positional arrays.
+  // For raw execute(), keep named objects so result[0]?.column_name works.
+  if (method === 'execute') {
+    return { rows }
+  }
+
   const arrayRows = rows.map((row: Record<string, unknown> | unknown[]) =>
     Array.isArray(row) ? row : Object.values(row)
   )
