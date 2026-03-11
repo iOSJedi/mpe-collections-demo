@@ -86,6 +86,8 @@ function AnalyticsContent() {
   const [creditRisk, setCreditRisk] = useState<CreditRiskPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pipelineRunning, setPipelineRunning] = useState(false)
+  const [pipelineResult, setPipelineResult] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -119,6 +121,36 @@ function AnalyticsContent() {
     }
   }, [])
 
+  const runPipeline = useCallback(async () => {
+    setPipelineRunning(true)
+    setPipelineResult(null)
+    try {
+      const res = await apiFetch('/api/ml/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tasks: [
+            'payment_patterns',
+            'payer_segmentation',
+            'delinquency_scoring',
+            'credit_risk',
+            'cash_flow_forecast',
+          ],
+        }),
+      })
+      if (!res.ok) throw new Error('Pipeline request failed')
+      const data = await res.json()
+      const completed = data.body?.tasks_completed ?? data.tasks_completed ?? []
+      setPipelineResult(`Completed ${completed.length} tasks`)
+      await fetchData()
+    } catch (err) {
+      console.error('Pipeline error:', err)
+      setPipelineResult('Pipeline failed — check console for details')
+    } finally {
+      setPipelineRunning(false)
+    }
+  }, [fetchData])
+
   useEffect(() => {
     fetchData()
   }, [fetchData])
@@ -147,8 +179,48 @@ function AnalyticsContent() {
     )
   }
 
+  const isEmpty = cashFlow.length < 2 && collections.length === 0 && creditRisk.length === 0
+
   return (
     <div className="space-y-6">
+      {/* Pipeline controls */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <button
+          onClick={runPipeline}
+          disabled={pipelineRunning}
+          className={
+            pipelineRunning
+              ? 'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-muted text-muted-foreground cursor-not-allowed transition-colors'
+              : 'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-sm transition-colors'
+          }
+        >
+          {pipelineRunning ? (
+            <>
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Running Pipeline…
+            </>
+          ) : (
+            <>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Run Analysis Pipeline
+            </>
+          )}
+        </button>
+        {pipelineResult && (
+          <span className="text-sm text-muted-foreground">{pipelineResult}</span>
+        )}
+        {isEmpty && !pipelineRunning && (
+          <span className="text-sm text-muted-foreground">
+            No analysis data found. Click &quot;Run Analysis Pipeline&quot; to generate forecasts and risk scores.
+          </span>
+        )}
+      </div>
+
       {/* Cash Flow Forecast */}
       <SectionCard
         title="Cash Flow Forecast"
