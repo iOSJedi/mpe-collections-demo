@@ -59,14 +59,30 @@ export function MatchDetail({ match, onClose, onAction }: MatchDetailProps) {
 
   const amountMismatch = match.invoice_amount !== match.po_amount
 
-  // Defensive: discrepancies may arrive as a JSON string from pg-proxy
+  // Defensive: discrepancies may be double-encoded JSON string from pg-proxy,
+  // or a single object instead of an array
   const discrepancies: MatchDetailProps['match']['discrepancies'] = (() => {
-    const raw = match.discrepancies
-    if (!raw) return null
-    if (typeof raw === 'string') {
-      try { return JSON.parse(raw) } catch { return null }
+    let val: unknown = match.discrepancies
+    if (!val) return null
+    // Unwrap nested JSON strings (pg-proxy double-encodes JSONB)
+    while (typeof val === 'string') {
+      try { val = JSON.parse(val) } catch { return null }
     }
-    return Array.isArray(raw) ? raw : null
+    // Wrap single object in array
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      const obj = val as Record<string, unknown>
+      // Convert {type, grAmount, invoiceAmount, variance} to {field, expected, actual, severity}
+      if ('type' in obj) {
+        return [{
+          field: String(obj.type ?? 'Variance'),
+          expected: obj.grAmount != null ? String(obj.grAmount) : '—',
+          actual: obj.invoiceAmount != null ? String(obj.invoiceAmount) : '—',
+          severity: 'warning',
+        }]
+      }
+      return null
+    }
+    return Array.isArray(val) ? val as MatchDetailProps['match']['discrepancies'] : null
   })()
 
   return (
