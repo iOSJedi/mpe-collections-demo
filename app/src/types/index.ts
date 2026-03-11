@@ -1,5 +1,13 @@
-export type NavView = 'dashboard' | 'chat' | 'customers' | 'wholesale' | 'branches' | 'analytics'
+// Navigation
+export type NavSpace = 'overview' | 'receivable' | 'payable' | 'collections' | 'intelligence'
+export type NavPage =
+  | 'overview'
+  | 'customer-accounts' | 'incoming-payments'
+  | 'supplier-accounts' | 'gr-ir-reconciliation'
+  | 'collections-worklist' | 'document-verification' | 'escalation-queue'
+  | 'ai-assistant' | 'insights-scoring' | 'analytics'
 
+// Chat (kept from original)
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
@@ -18,103 +26,240 @@ export interface ChartConfig {
   interpretation?: string
 }
 
+// Insight Cards (kept from original, updated fields)
 export interface InsightCard {
   id: number
-  severity: 'info' | 'warning' | 'alert' | 'opportunity'
+  severity: 'info' | 'warning' | 'critical'
   title: string
   body: string
   action: string | null
-  related_intent: string | null
+  related_entity_type: string | null
+  related_entity_id: number | null
   related_params: Record<string, unknown> | null
   created_at: string
 }
 
+// AR Types
 export interface CustomerSummary {
-  customer_id: string
-  customer_type: 'retail' | 'wholesale' | 'both'
-  first_name: string
-  last_name: string
-  business_name: string | null
-  segment_name: string | null
-  churn_risk: string | null
-  total_spend: number
-  transaction_count: number
-  last_transaction_date: string | null
-}
-
-export interface CustomerProfile extends CustomerSummary {
-  phone: string | null
-  email: string | null
-  loyalty_card_number: string | null
-  wholesale_member_id: string | null
-  barangay: string | null
-  municipality: string | null
-  registration_date: string
-  credit_limit: number | null
-  credit_terms_days: number | null
-  status: string
-  rfm_recency: number | null
-  rfm_frequency: number | null
-  rfm_monetary: number | null
-  churn_probability: number | null
-  top_risk_factor: string | null
-  credit_risk_level: string | null
-  credit_utilization: number | null
-  outstanding_balance: number | null
-  top_categories: { category: string; total: number }[]
-  top_brands: { brand: string; count: number }[]
-  monthly_spend: { month: string; total: number }[]
-  recent_transactions: {
-    transaction_id: string
-    date: string
-    branch_name: string
-    transaction_type: string
-    total_amount: number
-    items_count: number
-  }[]
-  recommended_products: { product_name: string; confidence: number }[]
-}
-
-export interface WholesaleBuyer {
-  customer_id: string
-  first_name: string
-  last_name: string
-  business_name: string
-  branch_name: string
-  risk_score: number
-  risk_level: string
-  outstanding_balance: number
-  credit_limit: number
-  credit_utilization: number
-  avg_days_overdue: number
-  payment_trend: string
-  order_frequency_trend: number
-  basket_size_trend: number
-  last_order_date: string
-  top_risk_factor: string | null
-  monthly_totals: { month: string; total: number }[]
-}
-
-export interface BranchData {
-  branch_id: string
-  branch_name: string
-  municipality: string
-  province: string
-  revenue_this_month: number
-  revenue_last_month: number
-  revenue_change: number
-  transaction_count: number
-  avg_basket_size: number
-  retail_revenue: number
-  wholesale_revenue: number
-  top_categories: { category: string; total: number }[]
-}
-
-export interface AnalysisTask {
-  id: string
+  customer_id: number
+  account_number: string
+  type: 'TENANT' | 'PROPERTY_MANAGER'
   name: string
+  business_type: string | null
+  property_name: string | null
+  unit_info: string | null
+  status: string
+  total_receivable: number
+  overdue_amount: number
+  delinquency_risk: string | null
+  segment_name: string | null
+}
+
+export interface CustomerDetail extends CustomerSummary {
+  contact_person: string | null
+  email: string | null
+  phone: string | null
+  contracts: ContractSummary[]
+  invoices: InvoiceSummary[]
+  recent_payments: PaymentSummary[]
+  delinquency_score: number | null
+  credit_risk_level: string | null
+  payment_pattern: PaymentPatternData | null
+}
+
+export interface ContractSummary {
+  contract_id: number
+  contract_number: string
+  type: string
+  description: string | null
+  monthly_amount: number
+  start_date: string
+  end_date: string
+  status: string
+}
+
+export interface InvoiceSummary {
+  invoice_id: number
+  invoice_number: string
+  contract_number: string
+  billing_period_start: string
+  billing_period_end: string
+  due_date: string
+  amount: number
+  balance_remaining: number
+  status: string
+}
+
+export interface PaymentSummary {
+  payment_id: number
+  invoice_number: string
+  amount: number
+  payment_method: string
+  payment_date: string
+  reference_number: string | null
+  status: string
+}
+
+export interface PaymentPatternData {
+  avg_days_to_pay: number | null
+  preferred_method: string | null
+  typical_payment_day: number | null
+  partial_payment_rate: number | null
+}
+
+// AP Types
+export interface SupplierSummary {
+  supplier_id: number
+  name: string
+  category: string
+  type: string
+  status: string
+  total_payable: number
+  open_pos: number
+  blocked_invoices: number
+}
+
+export interface SupplierDetail extends SupplierSummary {
+  contact_person: string | null
+  email: string | null
+  phone: string | null
+  tax_id: string | null
+  purchase_orders: POSummary[]
+  recent_invoices: SupplierInvoiceSummary[]
+}
+
+export interface POSummary {
+  po_id: number
+  po_number: string
+  project_name: string
+  total_amount: number
+  issued_date: string
+  status: string
+}
+
+export interface SupplierInvoiceSummary {
+  supplier_invoice_id: number
+  invoice_number: string
+  po_number: string
+  amount: number
+  submitted_date: string
+  due_date: string
+  payment_status: string
+}
+
+export interface ThreeWayMatchRow {
+  match_id: number
+  po_number: string
+  supplier_name: string
+  project_name: string
+  po_amount: number
+  receipt_amount: number
+  invoice_amount: number
+  match_status: string
+  payment_status: string
+  discrepancies: { field: string; expected: string; actual: string; severity: string }[] | null
+  ai_notes: string | null
+}
+
+// Collections Types
+export interface WorklistItem {
+  customer_id: number
+  account_number: string
+  name: string
+  type: string
+  total_overdue: number
+  oldest_invoice_date: string
+  risk_level: string | null
+  last_payment_date: string | null
+  days_overdue: number
+}
+
+export interface DocumentRecord {
+  document_id: number
+  customer_name: string
+  invoice_number: string | null
+  file_name: string
+  file_type: string
+  ocr_status: string
+  ocr_result: OcrResult | null
+  validation_result: ValidationResult | null
+  uploaded_at: string
+}
+
+export interface OcrResult {
+  payment_amount: number | null
+  payment_date: string | null
+  reference_number: string | null
+  bank_name: string | null
+  payee_name: string | null
+  payer_name: string | null
+  document_type: string | null
+}
+
+export interface ValidationResult {
+  is_valid: boolean
+  checks: ValidationCheck[]
+}
+
+export interface ValidationCheck {
+  check: string
+  passed: boolean
+  expected: string | null
+  actual: string | null
+  severity: 'info' | 'warning' | 'critical'
+}
+
+export interface EscalationRecord {
+  escalation_id: number
+  document_id: number
+  customer_name: string
+  invoice_number: string | null
+  type: string
   description: string
-  last_run: string | null
-  last_summary: string | null
-  parameters: { key: string; label: string; type: 'select' | 'date'; options?: { value: string; label: string }[] }[]
+  ai_analysis: Record<string, unknown> | null
+  status: string
+  assigned_to: string | null
+  created_at: string
+  resolved_at: string | null
+}
+
+// QR / Payment types
+export interface QrPayload {
+  inv: string   // invoice_number
+  con: string   // contract_number
+  acct: string  // account_number
+  amt: number   // invoice amount
+  bal: number   // balance remaining
+  due: string   // due date
+  exp: number   // expiry timestamp
+}
+
+export interface PaymentPageData {
+  invoice_number: string
+  contract_number: string
+  account_number: string
+  customer_name: string
+  due_date: string
+  amount: number
+  balance_remaining: number
+}
+
+// KPI types
+export interface OverviewKPIs {
+  total_receivables: number
+  overdue_receivables: number
+  dso: number
+  blocked_invoices: number
+  total_customers: number
+  overdue_customers: number
+  collection_rate: number
+  total_payables: number
+}
+
+// Emulator
+export interface EmulatorState {
+  isOpen: boolean
+  selectedCustomerId: number | null
+  activeTab: 'invoices' | 'qr' | 'upload' | 'history'
+  selectedInvoiceId: number | null
 }
