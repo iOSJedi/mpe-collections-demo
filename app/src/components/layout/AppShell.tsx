@@ -3,6 +3,7 @@
 import { TopBar } from './TopBar'
 import { Sidebar } from './Sidebar'
 import { BottomBar } from './BottomBar'
+import { CustomerEmulator } from '@/components/emulator/CustomerEmulator'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <BottomBar />
+      <CustomerEmulator />
     </div>
   )
 }
