@@ -14,7 +14,7 @@ import { AgingChart } from '@/components/dashboard/AgingChart'
 import type { AgingBucket } from '@/components/dashboard/AgingChart'
 import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
-import { AlertCircle, RefreshCw, Package, Users, ShieldAlert } from 'lucide-react'
+import { AlertCircle, RefreshCw, Package, Users, ShieldAlert, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function DashboardContent() {
@@ -22,7 +22,22 @@ function DashboardContent() {
   const { kpis, insights, loading, error } = useAppSelector((state) => state.dashboard)
   const [agingData, setAgingData] = useState<AgingBucket[]>([])
   const [agingLoading, setAgingLoading] = useState(false)
+  const [refreshingInsights, setRefreshingInsights] = useState(false)
   const fetchedRef = useRef(false)
+
+  const handleRefreshInsights = async () => {
+    setRefreshingInsights(true)
+    try {
+      const res = await apiFetch('/api/cron/refresh-insights', { method: 'POST' })
+      if (res.ok) {
+        dispatch(fetchInsights())
+      }
+    } catch {
+      // ignore
+    } finally {
+      setRefreshingInsights(false)
+    }
+  }
 
   useEffect(() => {
     if (fetchedRef.current) return
@@ -186,17 +201,32 @@ function DashboardContent() {
 
       {/* Insight cards */}
       <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold text-primary">Insights</h2>
-          <p className="text-muted-foreground text-sm">
-            AI-generated observations and recommended actions
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-primary">Insights</h2>
+            <p className="text-muted-foreground text-sm">
+              AI-generated observations and recommended actions
+            </p>
+          </div>
+          <button
+            onClick={handleRefreshInsights}
+            disabled={refreshingInsights}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-secondary/30 text-secondary hover:bg-secondary/5 transition-colors disabled:opacity-50"
+          >
+            {refreshingInsights ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {refreshingInsights ? 'Generating...' : 'Generate Insights'}
+          </button>
         </div>
 
         {insights.length === 0 ? (
-          <div className="rounded-xl border bg-white p-8 text-center">
+          <div className="rounded-xl border bg-white p-8 text-center space-y-3">
+            <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/50" />
             <p className="text-muted-foreground">
-              No insights available yet. Run the analytics pipeline to generate insights.
+              No insights available yet. Click &quot;Generate Insights&quot; to analyze your collections data.
             </p>
           </div>
         ) : (

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { insightCards, invoices, incomingPayments, delinquencyScores, customers } from '@/db/schema'
 import { sql, eq, lt } from 'drizzle-orm'
 
 interface InsightCardData {
-  severity: 'info' | 'warning' | 'critical' | 'opportunity'
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'
   title: string
   body: string
   action: string | null
@@ -95,7 +96,7 @@ Analytics Data:
 - Open escalations: ${data.openEscalations}
 
 Return a JSON array of insight cards. Each card must have:
-- severity: one of "info", "warning", "critical", "opportunity"
+- severity: one of "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"
 - title: short headline (under 80 chars)
 - body: 1-2 sentence explanation
 - action: suggested next step or null
@@ -120,45 +121,45 @@ function generateDemoInsights(
 
   if (data.overdueCount > 0) {
     cards.push({
-      severity: data.overdueTotal > 1_000_000 ? 'critical' : 'warning',
+      severity: data.overdueTotal > 1_000_000 ? 'CRITICAL' : 'HIGH',
       title: `PHP ${data.overdueTotal.toLocaleString()} overdue across ${data.overdueCount} invoices`,
       body: `There are currently ${data.overdueCount} overdue invoices totaling PHP ${data.overdueTotal.toLocaleString()}. Immediate follow-up is recommended to reduce aging.`,
       action: 'Review collections worklist and prioritize high-value accounts',
-      related_entity_type: 'invoice',
+      related_entity_type: 'INVOICE',
     })
   }
 
   if (data.highRiskCount > 0) {
     cards.push({
-      severity: data.highRiskCount > 20 ? 'critical' : 'warning',
+      severity: data.highRiskCount > 20 ? 'CRITICAL' : 'HIGH',
       title: `${data.highRiskCount} tenants flagged as high delinquency risk`,
       body: `${data.highRiskCount} customers have high or critical delinquency risk scores. Proactive outreach can prevent further escalation.`,
       action: 'View risk-scored customers in the receivables module',
-      related_entity_type: 'customer',
+      related_entity_type: 'CUSTOMER',
     })
   }
 
   if (data.pendingPaymentsCount > 0) {
     cards.push({
-      severity: 'info',
+      severity: 'MEDIUM',
       title: `${data.pendingPaymentsCount} payments awaiting confirmation`,
       body: `PHP ${data.pendingPaymentsTotal.toLocaleString()} in incoming payments are pending confirmation. Verify documents and confirm to update balances.`,
       action: 'Go to Incoming Payments log to confirm pending transactions',
-      related_entity_type: 'payment',
+      related_entity_type: 'INVOICE',
     })
   }
 
   if (data.dso > 45) {
     cards.push({
-      severity: 'warning',
+      severity: 'HIGH',
       title: `DSO at ${data.dso} days — above 45-day target`,
       body: `Your Days Sales Outstanding is ${data.dso} days, exceeding the 45-day benchmark. Accelerating collections can improve cash flow significantly.`,
       action: 'Review and expedite collections for oldest outstanding invoices',
-      related_entity_type: 'invoice',
+      related_entity_type: 'INVOICE',
     })
   } else {
     cards.push({
-      severity: 'info',
+      severity: 'INFO',
       title: `DSO at ${data.dso} days — within target`,
       body: `Days Sales Outstanding is ${data.dso} days, within the 45-day benchmark. Continue current collection cadence.`,
       action: null,
@@ -168,62 +169,73 @@ function generateDemoInsights(
 
   if (data.openEscalations > 0) {
     cards.push({
-      severity: data.openEscalations > 5 ? 'warning' : 'info',
+      severity: data.openEscalations > 5 ? 'HIGH' : 'MEDIUM',
       title: `${data.openEscalations} open escalations require attention`,
       body: `There are ${data.openEscalations} unresolved escalations in the queue. Timely resolution ensures accurate receivable records.`,
       action: 'Review escalation queue in the Collections module',
-      related_entity_type: 'escalation',
+      related_entity_type: 'CUSTOMER',
     })
   }
 
   cards.push({
-    severity: 'info',
+    severity: 'INFO',
     title: 'ML delinquency scores refreshed',
     body: 'Customer delinquency and credit risk scores have been updated with the latest payment data. Use these scores to prioritize collections outreach.',
     action: 'View customer risk scores in Receivables',
-    related_entity_type: 'customer',
+    related_entity_type: 'CUSTOMER',
   })
 
   return cards
 }
 
+async function refreshInsights() {
+  const analyticsData = await gatherCollectionsAnalytics()
+  const newInsights = await generateInsightsWithGemini(analyticsData)
+
+  // Deactivate old insight cards
+  await db
+    .update(insightCards)
+    .set({ isActive: false })
+    .where(sql`${insightCards.isActive} = true`)
+
+  // Insert new insight cards
+  if (newInsights.length > 0) {
+    await db.insert(insightCards).values(
+      newInsights.map((card) => ({
+        severity: card.severity,
+        title: card.title,
+        body: card.body,
+        action: card.action,
+        relatedEntityType: card.related_entity_type,
+        isActive: true,
+      }))
+    )
+  }
+
+  return { analyticsData, count: newInsights.length }
+}
+
+// POST — callable from cron (CRON_SECRET) or from logged-in user (Firebase token)
 export async function POST(request: NextRequest) {
-  // Protect cron endpoint with a shared secret
+  // Allow via CRON_SECRET or via Firebase auth token
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${cronSecret}`) {
+  const authHeader = request.headers.get('authorization')
+
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    // Cron access — OK
+  } else {
+    // Fall back to Firebase auth
+    const user = await verifyToken(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
   }
 
   try {
-    const analyticsData = await gatherCollectionsAnalytics()
-    const newInsights = await generateInsightsWithGemini(analyticsData)
-
-    // Deactivate old insight cards
-    await db
-      .update(insightCards)
-      .set({ isActive: false })
-      .where(eq(insightCards.isActive, true))
-
-    // Insert new insight cards
-    if (newInsights.length > 0) {
-      await db.insert(insightCards).values(
-        newInsights.map((card) => ({
-          severity: card.severity,
-          title: card.title,
-          body: card.body,
-          action: card.action,
-          relatedEntityType: card.related_entity_type,
-          isActive: true,
-        }))
-      )
-    }
-
+    const { analyticsData, count } = await refreshInsights()
     return NextResponse.json({
       success: true,
-      insights_generated: newInsights.length,
+      insights_generated: count,
       analytics_summary: analyticsData,
     })
   } catch (error) {

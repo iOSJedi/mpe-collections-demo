@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { insightCards } from '@/db/schema'
-import { eq, desc, sql } from 'drizzle-orm'
+import { desc, sql } from 'drizzle-orm'
 
 export const GET = withAuth(async (_request: NextRequest) => {
   try {
     const cards = await db
       .select()
       .from(insightCards)
-      .where(eq(insightCards.isActive, true))
+      .where(sql`${insightCards.isActive} = true`)
       .orderBy(
-        sql`CASE severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 WHEN 'INFO' THEN 5 ELSE 6 END`,
+        sql`CASE ${insightCards.severity} WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 WHEN 'INFO' THEN 5 ELSE 6 END`,
         desc(insightCards.createdAt)
       )
 
@@ -30,6 +30,6 @@ export const GET = withAuth(async (_request: NextRequest) => {
     return NextResponse.json({ insights })
   } catch (error) {
     console.error('Failed to fetch insights:', error)
-    return NextResponse.json({ error: 'Failed to fetch insights' }, { status: 500 })
+    return NextResponse.json({ insights: [] })
   }
 })
