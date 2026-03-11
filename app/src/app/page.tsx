@@ -1,84 +1,57 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
-import { DollarSign, Users, CreditCard, Building2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAppDispatch, useAppSelector } from '@/store'
-import { setActiveView } from '@/store/slices/navSlice'
-import {
-  setDashboardData,
-  setDashboardLoading,
-  setDashboardError,
-} from '@/store/slices/dashboardSlice'
+import { navigate } from '@/store/slices/navSlice'
+import { fetchKPIs, fetchInsights } from '@/store/slices/dashboardSlice'
 import { LoginPage } from '@/components/auth/LoginPage'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageLoadingSpinner } from '@/components/ui/page-loading-spinner'
-import { KPICard } from '@/components/dashboard/KPICard'
 import { InsightCardComponent } from '@/components/dashboard/InsightCardComponent'
+import { OverviewKPIsComponent } from '@/components/dashboard/OverviewKPIs'
+import { AgingChart } from '@/components/dashboard/AgingChart'
+import type { AgingBucket } from '@/components/dashboard/AgingChart'
 import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
-
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-
-function getGreeting(): string {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 17) return 'Good afternoon'
-  return 'Good evening'
-}
+import { AlertCircle, RefreshCw, Package, Users, ShieldAlert } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function DashboardContent() {
   const dispatch = useAppDispatch()
-  const { kpi, insights, loading, error, lastFetched } = useAppSelector(
-    (state) => state.dashboard
-  )
-
-  const fetchData = useCallback(async () => {
-    dispatch(setDashboardLoading(true))
-    dispatch(setDashboardError(null))
-    try {
-      const [kpiRes, insightsRes] = await Promise.all([
-        apiFetch('/api/kpi'),
-        apiFetch('/api/insights'),
-      ])
-
-      if (!kpiRes.ok || !insightsRes.ok) {
-        throw new Error('Failed to load dashboard data')
-      }
-
-      const kpiData = await kpiRes.json()
-      const insightsData = await insightsRes.json()
-
-      dispatch(setDashboardData({ kpi: kpiData, insights: insightsData.insights ?? [] }))
-    } catch (err) {
-      console.error('Dashboard fetch error:', err)
-      dispatch(setDashboardError('Unable to load dashboard data. Please try again.'))
-    } finally {
-      dispatch(setDashboardLoading(false))
-    }
-  }, [dispatch])
+  const { kpis, insights, loading, error } = useAppSelector((state) => state.dashboard)
+  const [agingData, setAgingData] = useState<AgingBucket[]>([])
+  const [agingLoading, setAgingLoading] = useState(false)
+  const fetchedRef = useRef(false)
 
   useEffect(() => {
-    if (lastFetched && Date.now() - lastFetched < CACHE_TTL && kpi) return
-    fetchData()
-  }, [fetchData, lastFetched, kpi])
+    if (fetchedRef.current) return
+    fetchedRef.current = true
 
-  if (loading && !kpi) {
+    dispatch(fetchKPIs())
+    dispatch(fetchInsights())
+
+    setAgingLoading(true)
+    apiFetch('/api/kpi/aging')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: AgingBucket[]) => setAgingData(data))
+      .catch(() => setAgingData([]))
+      .finally(() => setAgingLoading(false))
+  }, [dispatch])
+
+  if (loading && !kpis) {
     return (
       <div className="space-y-8">
-        {/* Greeting skeleton */}
-        <div>
-          <div className="h-7 w-96 bg-muted animate-pulse rounded-md" />
-          <div className="h-4 w-64 bg-muted animate-pulse rounded-md mt-2" />
+        {/* Header skeleton */}
+        <div className="space-y-2">
+          <div className="h-7 w-72 bg-muted animate-pulse rounded-md" />
+          <div className="h-4 w-48 bg-muted animate-pulse rounded-md" />
         </div>
 
         {/* KPI card skeletons */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-xl border bg-white p-5 space-y-3"
-            >
+            <div key={i} className="rounded-xl border bg-white p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="h-4 w-24 bg-muted animate-pulse rounded" />
                 <div className="h-8 w-8 bg-muted animate-pulse rounded-lg" />
@@ -89,43 +62,44 @@ function DashboardContent() {
           ))}
         </div>
 
-        {/* Insight card skeletons */}
-        <div className="space-y-4">
-          <div>
-            <div className="h-5 w-20 bg-muted animate-pulse rounded" />
-            <div className="h-3 w-56 bg-muted animate-pulse rounded mt-2" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-xl border bg-white p-5 space-y-3"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-5 bg-muted animate-pulse rounded-full" />
-                  <div className="h-4 w-40 bg-muted animate-pulse rounded" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-full bg-muted animate-pulse rounded" />
-                  <div className="h-3 w-4/5 bg-muted animate-pulse rounded" />
-                </div>
-                <div className="h-8 w-28 bg-muted animate-pulse rounded-md" />
-              </div>
+        {/* Chart + stats skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 rounded-xl border bg-white p-5 h-64 animate-pulse bg-muted" />
+          <div className="rounded-xl border bg-white p-5 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-14 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
+        </div>
+
+        {/* Insight skeletons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border bg-white p-5 space-y-3">
+              <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+              <div className="h-3 w-full bg-muted animate-pulse rounded" />
+              <div className="h-3 w-4/5 bg-muted animate-pulse rounded" />
+            </div>
+          ))}
         </div>
       </div>
     )
   }
 
-  if (error && !kpi) {
+  if (error && !kpis) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
+        <AlertCircle className="h-8 w-8 text-destructive" />
         <p className="text-destructive font-medium">{error}</p>
         <button
-          onClick={fetchData}
-          className="text-sm text-secondary hover:text-secondary/80 underline transition-colors"
+          onClick={() => {
+            fetchedRef.current = false
+            dispatch(fetchKPIs())
+            dispatch(fetchInsights())
+          }}
+          className="inline-flex items-center gap-2 text-sm text-secondary hover:text-secondary/80 underline transition-colors"
         >
+          <RefreshCw className="h-3.5 w-3.5" />
           Try again
         </button>
       </div>
@@ -134,48 +108,83 @@ function DashboardContent() {
 
   return (
     <div className="space-y-8">
-      {/* Greeting */}
+      {/* Page title */}
       <div>
-        <h1 className="text-2xl font-bold text-primary">
-          {getGreeting()} — here&apos;s what&apos;s happening across your 7 branches
-        </h1>
+        <h1 className="text-2xl font-bold text-primary">Collections Overview</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Real-time overview of sales, customers, and credit health
+          Real-time AR/AP health across all properties
         </p>
       </div>
 
-      {/* KPI Cards */}
-      {kpi && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Revenue This Month"
-            value={formatCurrency(kpi.revenue.this_month, true)}
-            change={kpi.revenue.change_pct}
-            subtitle="vs last month"
-            icon={<DollarSign className="h-5 w-5" />}
-          />
-          <KPICard
-            title="Active Customers"
-            value={kpi.active_customers.total.toLocaleString()}
-            subtitle={`${kpi.active_customers.retail} retail / ${kpi.active_customers.wholesale} wholesale`}
-            icon={<Users className="h-5 w-5" />}
-          />
-          <KPICard
-            title="Wholesale Credit"
-            value={formatCurrency(kpi.wholesale_credit.outstanding, true)}
-            subtitle={`${kpi.wholesale_credit.overdue_pct}% overdue`}
-            icon={<CreditCard className="h-5 w-5" />}
-          />
-          <KPICard
-            title="Top Branch"
-            value={kpi.top_branch.branch_name ?? 'N/A'}
-            subtitle={formatCurrency(kpi.top_branch.revenue, true)}
-            icon={<Building2 className="h-5 w-5" />}
-          />
-        </div>
-      )}
+      {/* KPI tiles */}
+      {kpis && <OverviewKPIsComponent kpis={kpis} />}
 
-      {/* Insights Section */}
+      {/* Aging chart + Quick stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Aging chart (2/3) */}
+        <div className="lg:col-span-2">
+          {agingLoading ? (
+            <div className="rounded-xl border bg-white h-[316px] animate-pulse bg-muted" />
+          ) : (
+            <AgingChart data={agingData} />
+          )}
+        </div>
+
+        {/* Quick stats (1/3) */}
+        <Card className="bg-white shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold text-primary">Quick Stats</CardTitle>
+            <p className="text-xs text-muted-foreground">Portfolio snapshot</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {kpis && (
+              <>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/40 p-3">
+                  <Users className="h-5 w-5 text-secondary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Customers</p>
+                    <p className="text-lg font-bold text-primary">
+                      {kpis.total_customers.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg bg-amber-50 p-3">
+                  <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Overdue Customers</p>
+                    <p className="text-lg font-bold text-primary">
+                      {kpis.overdue_customers.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg bg-red-50 p-3">
+                  <ShieldAlert className="h-5 w-5 text-destructive shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Blocked AP Invoices</p>
+                    <p className="text-lg font-bold text-primary">
+                      {kpis.blocked_invoices.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg bg-muted/40 p-3">
+                  <Package className="h-5 w-5 text-secondary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Payables</p>
+                    <p className="text-lg font-bold text-primary">
+                      {formatCurrency(kpis.total_payables, true)}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Insight cards */}
       <div className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-primary">Insights</h2>
@@ -207,7 +216,7 @@ export default function Home() {
   const dispatch = useAppDispatch()
 
   useEffect(() => {
-    dispatch(setActiveView('dashboard'))
+    dispatch(navigate({ space: 'overview', page: 'overview' }))
   }, [dispatch])
 
   if (loading) return <PageLoadingSpinner message="Loading dashboard..." />

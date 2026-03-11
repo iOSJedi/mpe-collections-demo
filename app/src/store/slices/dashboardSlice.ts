@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import { apiFetch } from '@/lib/api'
 import { OverviewKPIs, InsightCard } from '@/types'
 
 interface DashboardState {
@@ -18,7 +19,7 @@ const initialState: DashboardState = {
 export const fetchKPIs = createAsyncThunk(
   'dashboard/fetchKPIs',
   async (_, { rejectWithValue }) => {
-    const res = await fetch('/api/kpi')
+    const res = await apiFetch('/api/kpi')
     if (!res.ok) return rejectWithValue('Failed to fetch KPIs')
     return res.json() as Promise<OverviewKPIs>
   }
@@ -27,9 +28,11 @@ export const fetchKPIs = createAsyncThunk(
 export const fetchInsights = createAsyncThunk(
   'dashboard/fetchInsights',
   async (_, { rejectWithValue }) => {
-    const res = await fetch('/api/insights')
+    const res = await apiFetch('/api/insights')
     if (!res.ok) return rejectWithValue('Failed to fetch insights')
-    return res.json() as Promise<InsightCard[]>
+    const data = await res.json()
+    // API returns { insights: InsightCard[] }
+    return (data.insights ?? data) as InsightCard[]
   }
 )
 
