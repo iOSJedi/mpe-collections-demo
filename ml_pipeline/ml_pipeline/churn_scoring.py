@@ -56,7 +56,7 @@ def _fetch_delinquency_features():
                 SUM(CAST(i.balance_remaining AS numeric)) AS total_balance_remaining,
                 -- Total invoice amount
                 SUM(CAST(i.amount AS numeric)) AS total_invoice_amount
-            FROM invoices i
+            FROM invoices_col i
             WHERE i.customer_id IS NOT NULL
             GROUP BY i.customer_id
         ),
@@ -65,8 +65,8 @@ def _fetch_delinquency_features():
             SELECT
                 i.customer_id,
                 COUNT(ip.payment_id) AS payments_recent
-            FROM incoming_payments ip
-            JOIN invoices i ON ip.invoice_id = i.invoice_id
+            FROM incoming_payments_col ip
+            JOIN invoices_col i ON ip.invoice_id = i.invoice_id
             WHERE ip.payment_date >= NOW() - INTERVAL '3 months'
             GROUP BY i.customer_id
         ),
@@ -75,8 +75,8 @@ def _fetch_delinquency_features():
             SELECT
                 i.customer_id,
                 COUNT(ip.payment_id) AS payments_prior
-            FROM incoming_payments ip
-            JOIN invoices i ON ip.invoice_id = i.invoice_id
+            FROM incoming_payments_col ip
+            JOIN invoices_col i ON ip.invoice_id = i.invoice_id
             WHERE ip.payment_date >= NOW() - INTERVAL '6 months'
               AND ip.payment_date < NOW() - INTERVAL '3 months'
             GROUP BY i.customer_id
@@ -89,7 +89,7 @@ def _fetch_delinquency_features():
             COALESCE(s.total_invoice_amount, 0)        AS total_invoice_amount,
             COALESCE(rp.payments_recent, 0)            AS payments_recent,
             COALESCE(pp.payments_prior, 0)             AS payments_prior
-        FROM customers c
+        FROM customers_col c
         LEFT JOIN invoice_stats s ON c.customer_id = s.customer_id
         LEFT JOIN recent_payments rp ON c.customer_id = rp.customer_id
         LEFT JOIN prior_payments pp ON c.customer_id = pp.customer_id

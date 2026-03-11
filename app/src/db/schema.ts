@@ -5,7 +5,7 @@ import {
 
 // ─── ACCOUNTS RECEIVABLE ──────────────────────────────────────
 
-export const customers = pgTable('customers', {
+export const customers = pgTable('customers_col', {
   customerId: serial('customer_id').primaryKey(),
   accountNumber: varchar('account_number', { length: 20 }).notNull().unique(),
   type: varchar('type', { length: 20 }).notNull(), // TENANT | PROPERTY_MANAGER
@@ -20,7 +20,7 @@ export const customers = pgTable('customers', {
   createdAt: timestamp('created_at').defaultNow(),
 })
 
-export const contracts = pgTable('contracts', {
+export const contracts = pgTable('contracts_col', {
   contractId: serial('contract_id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.customerId),
   contractNumber: varchar('contract_number', { length: 30 }).notNull().unique(),
@@ -32,10 +32,10 @@ export const contracts = pgTable('contracts', {
   status: varchar('status', { length: 20 }).notNull().default('ACTIVE'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
-  index('idx_contracts_customer').on(table.customerId),
+  index('idx_contracts_customer_col').on(table.customerId),
 ])
 
-export const invoices = pgTable('invoices', {
+export const invoices = pgTable('invoices_col', {
   invoiceId: serial('invoice_id').primaryKey(),
   contractId: integer('contract_id').notNull().references(() => contracts.contractId),
   customerId: integer('customer_id').notNull().references(() => customers.customerId),
@@ -48,13 +48,13 @@ export const invoices = pgTable('invoices', {
   status: varchar('status', { length: 20 }).notNull().default('PENDING'),
   issuedAt: timestamp('issued_at').defaultNow(),
 }, (table) => [
-  index('idx_invoices_customer').on(table.customerId),
-  index('idx_invoices_contract').on(table.contractId),
-  index('idx_invoices_status').on(table.status),
-  index('idx_invoices_due_date').on(table.dueDate),
+  index('idx_invoices_customer_col').on(table.customerId),
+  index('idx_invoices_contract_col').on(table.contractId),
+  index('idx_invoices_status_col').on(table.status),
+  index('idx_invoices_due_date_col').on(table.dueDate),
 ])
 
-export const incomingPayments = pgTable('incoming_payments', {
+export const incomingPayments = pgTable('incoming_payments_col', {
   paymentId: serial('payment_id').primaryKey(),
   invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId),
   customerId: integer('customer_id').notNull().references(() => customers.customerId),
@@ -66,11 +66,11 @@ export const incomingPayments = pgTable('incoming_payments', {
   status: varchar('status', { length: 20 }).notNull().default('PENDING'),
   confirmedAt: timestamp('confirmed_at'),
 }, (table) => [
-  index('idx_payments_invoice').on(table.invoiceId),
-  index('idx_payments_customer').on(table.customerId),
+  index('idx_payments_invoice_col').on(table.invoiceId),
+  index('idx_payments_customer_col').on(table.customerId),
 ])
 
-export const qrCodes = pgTable('qr_codes', {
+export const qrCodes = pgTable('qr_codes_col', {
   qrId: serial('qr_id').primaryKey(),
   invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId),
   customerId: integer('customer_id').notNull().references(() => customers.customerId),
@@ -82,7 +82,7 @@ export const qrCodes = pgTable('qr_codes', {
   expiresAt: timestamp('expires_at').notNull(),
 })
 
-export const documents = pgTable('documents', {
+export const documents = pgTable('documents_col', {
   documentId: serial('document_id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.customerId),
   invoiceId: integer('invoice_id').references(() => invoices.invoiceId),
@@ -95,10 +95,10 @@ export const documents = pgTable('documents', {
   validationResult: jsonb('validation_result'),
   uploadedAt: timestamp('uploaded_at').defaultNow(),
 }, (table) => [
-  index('idx_documents_customer').on(table.customerId),
+  index('idx_documents_customer_col').on(table.customerId),
 ])
 
-export const escalations = pgTable('escalations', {
+export const escalations = pgTable('escalations_col', {
   escalationId: serial('escalation_id').primaryKey(),
   documentId: integer('document_id').notNull().references(() => documents.documentId),
   customerId: integer('customer_id').notNull().references(() => customers.customerId),
@@ -112,13 +112,13 @@ export const escalations = pgTable('escalations', {
   createdAt: timestamp('created_at').defaultNow(),
   resolvedAt: timestamp('resolved_at'),
 }, (table) => [
-  index('idx_escalations_status').on(table.status),
-  index('idx_escalations_customer').on(table.customerId),
+  index('idx_escalations_status_col').on(table.status),
+  index('idx_escalations_customer_col').on(table.customerId),
 ])
 
 // ─── ACCOUNTS PAYABLE ─────────────────────────────────────────
 
-export const suppliers = pgTable('suppliers', {
+export const suppliers = pgTable('suppliers_col', {
   supplierId: serial('supplier_id').primaryKey(),
   name: varchar('name', { length: 200 }).notNull(),
   category: varchar('category', { length: 100 }).notNull(),
@@ -132,7 +132,7 @@ export const suppliers = pgTable('suppliers', {
   createdAt: timestamp('created_at').defaultNow(),
 })
 
-export const purchaseOrders = pgTable('purchase_orders', {
+export const purchaseOrders = pgTable('purchase_orders_col', {
   poId: serial('po_id').primaryKey(),
   poNumber: varchar('po_number', { length: 30 }).notNull().unique(),
   supplierId: integer('supplier_id').notNull().references(() => suppliers.supplierId),
@@ -144,10 +144,10 @@ export const purchaseOrders = pgTable('purchase_orders', {
   status: varchar('status', { length: 30 }).notNull().default('OPEN'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
-  index('idx_po_supplier').on(table.supplierId),
+  index('idx_po_supplier_col').on(table.supplierId),
 ])
 
-export const goodsReceipts = pgTable('goods_receipts', {
+export const goodsReceipts = pgTable('goods_receipts_col', {
   receiptId: serial('receipt_id').primaryKey(),
   poId: integer('po_id').notNull().references(() => purchaseOrders.poId),
   supplierId: integer('supplier_id').notNull().references(() => suppliers.supplierId),
@@ -161,10 +161,10 @@ export const goodsReceipts = pgTable('goods_receipts', {
   conditionNotes: text('condition_notes'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
-  index('idx_gr_po').on(table.poId),
+  index('idx_gr_po_col').on(table.poId),
 ])
 
-export const supplierInvoices = pgTable('supplier_invoices', {
+export const supplierInvoices = pgTable('supplier_invoices_col', {
   supplierInvoiceId: serial('supplier_invoice_id').primaryKey(),
   supplierId: integer('supplier_id').notNull().references(() => suppliers.supplierId),
   poId: integer('po_id').notNull().references(() => purchaseOrders.poId),
@@ -177,11 +177,11 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   paymentDate: date('payment_date'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
-  index('idx_si_supplier').on(table.supplierId),
-  index('idx_si_po').on(table.poId),
+  index('idx_si_supplier_col').on(table.supplierId),
+  index('idx_si_po_col').on(table.poId),
 ])
 
-export const outgoingPayments = pgTable('outgoing_payments', {
+export const outgoingPayments = pgTable('outgoing_payments_col', {
   outgoingPaymentId: serial('outgoing_payment_id').primaryKey(),
   supplierInvoiceId: integer('supplier_invoice_id').notNull().references(() => supplierInvoices.supplierInvoiceId),
   supplierId: integer('supplier_id').notNull().references(() => suppliers.supplierId),
@@ -193,10 +193,10 @@ export const outgoingPayments = pgTable('outgoing_payments', {
   status: varchar('status', { length: 20 }).notNull().default('PENDING'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
-  index('idx_op_supplier_invoice').on(table.supplierInvoiceId),
+  index('idx_op_supplier_invoice_col').on(table.supplierInvoiceId),
 ])
 
-export const threeWayMatches = pgTable('three_way_matches', {
+export const threeWayMatches = pgTable('three_way_matches_col', {
   matchId: serial('match_id').primaryKey(),
   poId: integer('po_id').notNull().references(() => purchaseOrders.poId),
   receiptId: integer('receipt_id').notNull().references(() => goodsReceipts.receiptId),
@@ -212,13 +212,13 @@ export const threeWayMatches = pgTable('three_way_matches', {
   reviewedAt: timestamp('reviewed_at'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
-  index('idx_twm_status').on(table.matchStatus),
-  index('idx_twm_supplier').on(table.supplierId),
+  index('idx_twm_status_col').on(table.matchStatus),
+  index('idx_twm_supplier_col').on(table.supplierId),
 ])
 
 // ─── ML OUTPUT TABLES ─────────────────────────────────────────
 
-export const payerSegments = pgTable('payer_segments', {
+export const payerSegments = pgTable('payer_segments_col', {
   segmentId: serial('segment_id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.customerId).unique(),
   segmentName: varchar('segment_name', { length: 50 }).notNull(),
@@ -229,7 +229,7 @@ export const payerSegments = pgTable('payer_segments', {
   scoredAt: timestamp('scored_at').defaultNow(),
 })
 
-export const delinquencyScores = pgTable('delinquency_scores', {
+export const delinquencyScores = pgTable('delinquency_scores_col', {
   delinquencyId: serial('delinquency_id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.customerId).unique(),
   riskScore: decimal('risk_score', { precision: 5, scale: 4 }).notNull(),
@@ -240,10 +240,10 @@ export const delinquencyScores = pgTable('delinquency_scores', {
   topRiskFactor: varchar('top_risk_factor', { length: 100 }),
   scoredAt: timestamp('scored_at').defaultNow(),
 }, (table) => [
-  index('idx_delinquency_risk').on(table.riskLevel),
+  index('idx_delinquency_risk_col').on(table.riskLevel),
 ])
 
-export const creditRiskScores = pgTable('credit_risk_scores', {
+export const creditRiskScores = pgTable('credit_risk_scores_col', {
   creditRiskId: serial('credit_risk_id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.customerId).unique(),
   riskScore: decimal('risk_score', { precision: 5, scale: 4 }).notNull(),
@@ -254,10 +254,10 @@ export const creditRiskScores = pgTable('credit_risk_scores', {
   paymentTrend: varchar('payment_trend', { length: 20 }),
   scoredAt: timestamp('scored_at').defaultNow(),
 }, (table) => [
-  index('idx_credit_risk_level').on(table.riskLevel),
+  index('idx_credit_risk_level_col').on(table.riskLevel),
 ])
 
-export const insightCards = pgTable('insight_cards', {
+export const insightCards = pgTable('insight_cards_col', {
   id: serial('id').primaryKey(),
   severity: varchar('severity', { length: 15 }).notNull(),
   title: varchar('title', { length: 200 }).notNull(),
@@ -270,10 +270,10 @@ export const insightCards = pgTable('insight_cards', {
   createdAt: timestamp('created_at').defaultNow(),
   expiresAt: timestamp('expires_at'),
 }, (table) => [
-  index('idx_insight_cards_active').on(table.isActive, table.createdAt),
+  index('idx_insight_cards_active_col').on(table.isActive, table.createdAt),
 ])
 
-export const cashFlowForecasts = pgTable('cash_flow_forecasts', {
+export const cashFlowForecasts = pgTable('cash_flow_forecasts_col', {
   forecastId: serial('forecast_id').primaryKey(),
   forecastDate: date('forecast_date').notNull(),
   predictedInflow: decimal('predicted_inflow', { precision: 14, scale: 2 }).notNull(),
@@ -284,7 +284,7 @@ export const cashFlowForecasts = pgTable('cash_flow_forecasts', {
   createdAt: timestamp('created_at').defaultNow(),
 })
 
-export const paymentPatterns = pgTable('payment_patterns', {
+export const paymentPatterns = pgTable('payment_patterns_col', {
   patternId: serial('pattern_id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.customerId).unique(),
   avgDaysToPay: decimal('avg_days_to_pay', { precision: 6, scale: 1 }),

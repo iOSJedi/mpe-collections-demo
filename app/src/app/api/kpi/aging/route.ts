@@ -15,7 +15,7 @@ export const GET = withAuth(async (_request: NextRequest) => {
           ELSE '90+ days'
         END AS bucket,
         COALESCE(SUM(balance_remaining::numeric), 0) AS amount
-      FROM invoices
+      FROM invoices_col
       WHERE status != 'PAID'
       GROUP BY 1
     `)

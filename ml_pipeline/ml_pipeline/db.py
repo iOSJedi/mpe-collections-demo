@@ -47,15 +47,15 @@ def execute_many(query, data):
 
 def get_customers():
     """Return all active customers."""
-    return execute_query("SELECT * FROM customers WHERE status = 'active'")
+    return execute_query("SELECT * FROM customers_col WHERE status = 'active'")
 
 
 def get_invoices():
     """Return all invoices with customer info."""
     return execute_query("""
         SELECT i.*, c.name AS customer_name
-        FROM invoices i
-        JOIN customers c ON i.customer_id = c.customer_id
+        FROM invoices_col i
+        JOIN customers_col c ON i.customer_id = c.customer_id
     """)
 
 
@@ -64,8 +64,8 @@ def get_incoming_payments():
     return execute_query("""
         SELECT ip.*, i.amount AS invoice_amount, i.due_date, i.issue_date,
                i.customer_id
-        FROM incoming_payments ip
-        JOIN invoices i ON ip.invoice_id = i.invoice_id
+        FROM incoming_payments_col ip
+        JOIN invoices_col i ON ip.invoice_id = i.invoice_id
     """)
 
 
@@ -75,15 +75,15 @@ def get_incoming_payments():
 
 def get_suppliers():
     """Return all active suppliers."""
-    return execute_query("SELECT * FROM suppliers WHERE status = 'active'")
+    return execute_query("SELECT * FROM suppliers_col WHERE status = 'active'")
 
 
 def get_supplier_invoices():
     """Return all supplier invoices with supplier info."""
     return execute_query("""
         SELECT si.*, s.name AS supplier_name
-        FROM supplier_invoices si
-        JOIN suppliers s ON si.supplier_id = s.supplier_id
+        FROM supplier_invoices_col si
+        JOIN suppliers_col s ON si.supplier_id = s.supplier_id
     """)
 
 
@@ -92,8 +92,8 @@ def get_outgoing_payments():
     return execute_query("""
         SELECT op.*, si.amount AS invoice_amount, si.due_date, si.issue_date,
                si.supplier_id
-        FROM outgoing_payments op
-        JOIN supplier_invoices si ON op.supplier_invoice_id = si.supplier_invoice_id
+        FROM outgoing_payments_col op
+        JOIN supplier_invoices_col si ON op.supplier_invoice_id = si.supplier_invoice_id
     """)
 
 
@@ -111,11 +111,11 @@ def upsert_payer_segments(rows):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM payer_segments")
+            cur.execute("DELETE FROM payer_segments_col")
             psycopg2.extras.execute_values(
                 cur,
                 """
-                INSERT INTO payer_segments
+                INSERT INTO payer_segments_col
                     (customer_id, segment_name, regularity_score, amount_score,
                      timeliness_score, cluster_id, updated_at)
                 VALUES %s
@@ -139,11 +139,11 @@ def upsert_delinquency_scores(rows):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM delinquency_scores")
+            cur.execute("DELETE FROM delinquency_scores_col")
             psycopg2.extras.execute_values(
                 cur,
                 """
-                INSERT INTO delinquency_scores
+                INSERT INTO delinquency_scores_col
                     (customer_id, score, risk_bucket, avg_days_overdue,
                      missed_payment_count, payment_trend, outstanding_balance_ratio,
                      top_risk_factor, updated_at)
@@ -167,11 +167,11 @@ def upsert_credit_risk_scores(rows):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM credit_risk_scores")
+            cur.execute("DELETE FROM credit_risk_scores_col")
             psycopg2.extras.execute_values(
                 cur,
                 """
-                INSERT INTO credit_risk_scores
+                INSERT INTO credit_risk_scores_col
                     (customer_id, risk_score, risk_level, outstanding_balance,
                      credit_utilization, avg_days_overdue, payment_trend,
                      top_risk_factor, updated_at)
@@ -195,11 +195,11 @@ def upsert_payment_patterns(rows):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM payment_patterns")
+            cur.execute("DELETE FROM payment_patterns_col")
             psycopg2.extras.execute_values(
                 cur,
                 """
-                INSERT INTO payment_patterns
+                INSERT INTO payment_patterns_col
                     (customer_id, avg_days_to_pay, preferred_method,
                      typical_payment_day, partial_payment_rate, updated_at)
                 VALUES %s
@@ -222,11 +222,11 @@ def upsert_cash_flow_forecasts(rows):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM cash_flow_forecasts")
+            cur.execute("DELETE FROM cash_flow_forecasts_col")
             psycopg2.extras.execute_values(
                 cur,
                 """
-                INSERT INTO cash_flow_forecasts
+                INSERT INTO cash_flow_forecasts_col
                     (forecast_month, inflow_forecast, inflow_lower, inflow_upper,
                      outflow_forecast, outflow_lower, outflow_upper,
                      based_on_months, updated_at)

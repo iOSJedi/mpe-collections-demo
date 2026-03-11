@@ -41,8 +41,8 @@ def _fetch_rat_data():
                 LAG(ip.payment_date) OVER (
                     PARTITION BY i.customer_id ORDER BY ip.payment_date
                 ) AS prev_payment_date
-            FROM incoming_payments ip
-            JOIN invoices i ON ip.invoice_id = i.invoice_id
+            FROM incoming_payments_col ip
+            JOIN invoices_col i ON ip.invoice_id = i.invoice_id
         ),
         regularity AS (
             SELECT
@@ -62,8 +62,8 @@ def _fetch_rat_data():
                     CAST(ip.amount AS numeric) /
                     NULLIF(CAST(i.amount AS numeric), 0)
                 ) AS avg_amount_ratio
-            FROM incoming_payments ip
-            JOIN invoices i ON ip.invoice_id = i.invoice_id
+            FROM incoming_payments_col ip
+            JOIN invoices_col i ON ip.invoice_id = i.invoice_id
             GROUP BY i.customer_id
         ),
         timeliness AS (
@@ -73,8 +73,8 @@ def _fetch_rat_data():
                     EXTRACT(EPOCH FROM (ip.payment_date::timestamp - i.issue_date::timestamp))
                     / 86400.0
                 ) AS avg_days_to_pay
-            FROM incoming_payments ip
-            JOIN invoices i ON ip.invoice_id = i.invoice_id
+            FROM incoming_payments_col ip
+            JOIN invoices_col i ON ip.invoice_id = i.invoice_id
             GROUP BY i.customer_id
         )
         SELECT
@@ -83,7 +83,7 @@ def _fetch_rat_data():
             COALESCE(a.avg_amount_ratio, 0)     AS amount,
             COALESCE(t.avg_days_to_pay, 999)    AS timeliness,
             COALESCE(r.payment_count, 0)        AS payment_count
-        FROM customers c
+        FROM customers_col c
         LEFT JOIN regularity r ON c.customer_id = r.customer_id
         LEFT JOIN amount_ratio a ON c.customer_id = a.customer_id
         LEFT JOIN timeliness t ON c.customer_id = t.customer_id

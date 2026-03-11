@@ -29,7 +29,7 @@ def _fetch_monthly_inflows():
         SELECT
             TO_CHAR(payment_date, 'YYYY-MM') AS month,
             SUM(CAST(amount AS numeric))      AS total
-        FROM incoming_payments
+        FROM incoming_payments_col
         WHERE payment_date IS NOT NULL
           AND payment_date >= NOW() - INTERVAL '%s months'
         GROUP BY TO_CHAR(payment_date, 'YYYY-MM')
@@ -52,7 +52,7 @@ def _fetch_monthly_outflows():
         SELECT
             TO_CHAR(payment_date, 'YYYY-MM') AS month,
             SUM(CAST(amount AS numeric))      AS total
-        FROM outgoing_payments
+        FROM outgoing_payments_col
         WHERE payment_date IS NOT NULL
           AND payment_date >= NOW() - INTERVAL '%s months'
         GROUP BY TO_CHAR(payment_date, 'YYYY-MM')

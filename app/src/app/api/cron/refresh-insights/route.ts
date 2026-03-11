@@ -17,7 +17,7 @@ async function gatherCollectionsAnalytics() {
     SELECT
       COALESCE(SUM(balance_remaining::numeric), 0)::text AS total_overdue,
       COUNT(*)::text AS overdue_count
-    FROM invoices
+    FROM invoices_col
     WHERE status IN ('OVERDUE', 'PARTIAL')
       AND due_date < CURRENT_DATE
   `)
@@ -33,7 +33,7 @@ async function gatherCollectionsAnalytics() {
     SELECT
       COUNT(*)::text AS count,
       COALESCE(SUM(amount::numeric), 0)::text AS total
-    FROM incoming_payments
+    FROM incoming_payments_col
     WHERE status = 'PENDING'
   `)
 
@@ -47,13 +47,13 @@ async function gatherCollectionsAnalytics() {
           NULLIF(COALESCE(SUM(i.amount::numeric), 0), 0) * 30
         , 1)::text
       END AS dso
-    FROM invoices i
+    FROM invoices_col i
     WHERE i.issued_at >= CURRENT_DATE - interval '90 days'
   `)
 
   // Escalations open
   const openEscalations = await db.execute<{ count: string }>(sql`
-    SELECT COUNT(*)::text AS count FROM escalations WHERE status = 'OPEN'
+    SELECT COUNT(*)::text AS count FROM escalations_col WHERE status = 'OPEN'
   `)
 
   return {

@@ -29,8 +29,8 @@ def _fetch_payment_data():
             CAST(ip.amount AS numeric)    AS payment_amount,
             CAST(i.amount AS numeric)     AS invoice_amount,
             i.issue_date
-        FROM incoming_payments ip
-        JOIN invoices i ON ip.invoice_id = i.invoice_id
+        FROM incoming_payments_col ip
+        JOIN invoices_col i ON ip.invoice_id = i.invoice_id
         WHERE ip.payment_date IS NOT NULL
           AND i.customer_id IS NOT NULL
         ORDER BY i.customer_id, ip.payment_date

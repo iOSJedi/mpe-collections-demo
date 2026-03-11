@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const SCHEMA_DDL = `
 -- ─── ACCOUNTS RECEIVABLE ──────────────────────────────────────
 
-CREATE TABLE customers (
+CREATE TABLE customers_col (
   customer_id SERIAL PRIMARY KEY,
   account_number VARCHAR(20) NOT NULL UNIQUE,
   type VARCHAR(20) NOT NULL,                   -- TENANT | PROPERTY_MANAGER
@@ -20,9 +20,9 @@ CREATE TABLE customers (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE contracts (
+CREATE TABLE contracts_col (
   contract_id SERIAL PRIMARY KEY,
-  customer_id INTEGER NOT NULL REFERENCES customers(customer_id),
+  customer_id INTEGER NOT NULL REFERENCES customers_col(customer_id),
   contract_number VARCHAR(30) NOT NULL UNIQUE,
   type VARCHAR(20) NOT NULL,                   -- LEASE | CONCESSION | SERVICE
   description TEXT,
@@ -33,10 +33,10 @@ CREATE TABLE contracts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE invoices (
+CREATE TABLE invoices_col (
   invoice_id SERIAL PRIMARY KEY,
-  contract_id INTEGER NOT NULL REFERENCES contracts(contract_id),
-  customer_id INTEGER NOT NULL REFERENCES customers(customer_id),
+  contract_id INTEGER NOT NULL REFERENCES contracts_col(contract_id),
+  customer_id INTEGER NOT NULL REFERENCES customers_col(customer_id),
   invoice_number VARCHAR(30) NOT NULL UNIQUE,
   billing_period_start DATE NOT NULL,
   billing_period_end DATE NOT NULL,
@@ -47,10 +47,10 @@ CREATE TABLE invoices (
   issued_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE incoming_payments (
+CREATE TABLE incoming_payments_col (
   payment_id SERIAL PRIMARY KEY,
-  invoice_id INTEGER NOT NULL REFERENCES invoices(invoice_id),
-  customer_id INTEGER NOT NULL REFERENCES customers(customer_id),
+  invoice_id INTEGER NOT NULL REFERENCES invoices_col(invoice_id),
+  customer_id INTEGER NOT NULL REFERENCES customers_col(customer_id),
   amount DECIMAL(12,2) NOT NULL,
   payment_method VARCHAR(20) NOT NULL,
   payment_date TIMESTAMP DEFAULT NOW(),
@@ -60,10 +60,10 @@ CREATE TABLE incoming_payments (
   confirmed_at TIMESTAMP
 );
 
-CREATE TABLE qr_codes (
+CREATE TABLE qr_codes_col (
   qr_id SERIAL PRIMARY KEY,
-  invoice_id INTEGER NOT NULL REFERENCES invoices(invoice_id),
-  customer_id INTEGER NOT NULL REFERENCES customers(customer_id),
+  invoice_id INTEGER NOT NULL REFERENCES invoices_col(invoice_id),
+  customer_id INTEGER NOT NULL REFERENCES customers_col(customer_id),
   contract_number VARCHAR(30) NOT NULL,
   account_identifier VARCHAR(20) NOT NULL,
   amount DECIMAL(12,2) NOT NULL,
@@ -72,11 +72,11 @@ CREATE TABLE qr_codes (
   expires_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE documents (
+CREATE TABLE documents_col (
   document_id SERIAL PRIMARY KEY,
-  customer_id INTEGER NOT NULL REFERENCES customers(customer_id),
-  invoice_id INTEGER REFERENCES invoices(invoice_id),
-  payment_id INTEGER REFERENCES incoming_payments(payment_id),
+  customer_id INTEGER NOT NULL REFERENCES customers_col(customer_id),
+  invoice_id INTEGER REFERENCES invoices_col(invoice_id),
+  payment_id INTEGER REFERENCES incoming_payments_col(payment_id),
   file_url TEXT NOT NULL,
   file_name VARCHAR(200) NOT NULL,
   file_type VARCHAR(50) NOT NULL,
@@ -86,11 +86,11 @@ CREATE TABLE documents (
   uploaded_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE escalations (
+CREATE TABLE escalations_col (
   escalation_id SERIAL PRIMARY KEY,
-  document_id INTEGER NOT NULL REFERENCES documents(document_id),
-  customer_id INTEGER NOT NULL REFERENCES customers(customer_id),
-  invoice_id INTEGER REFERENCES invoices(invoice_id),
+  document_id INTEGER NOT NULL REFERENCES documents_col(document_id),
+  customer_id INTEGER NOT NULL REFERENCES customers_col(customer_id),
+  invoice_id INTEGER REFERENCES invoices_col(invoice_id),
   type VARCHAR(30) NOT NULL,
   description TEXT NOT NULL,
   ai_analysis JSONB,
@@ -103,7 +103,7 @@ CREATE TABLE escalations (
 
 -- ─── ACCOUNTS PAYABLE ─────────────────────────────────────────
 
-CREATE TABLE suppliers (
+CREATE TABLE suppliers_col (
   supplier_id SERIAL PRIMARY KEY,
   name VARCHAR(200) NOT NULL,
   category VARCHAR(100) NOT NULL,
@@ -117,10 +117,10 @@ CREATE TABLE suppliers (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE purchase_orders (
+CREATE TABLE purchase_orders_col (
   po_id SERIAL PRIMARY KEY,
   po_number VARCHAR(30) NOT NULL UNIQUE,
-  supplier_id INTEGER NOT NULL REFERENCES suppliers(supplier_id),
+  supplier_id INTEGER NOT NULL REFERENCES suppliers_col(supplier_id),
   project_name VARCHAR(200) NOT NULL,
   description TEXT,
   total_amount DECIMAL(12,2) NOT NULL,
@@ -130,10 +130,10 @@ CREATE TABLE purchase_orders (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE goods_receipts (
+CREATE TABLE goods_receipts_col (
   receipt_id SERIAL PRIMARY KEY,
-  po_id INTEGER NOT NULL REFERENCES purchase_orders(po_id),
-  supplier_id INTEGER NOT NULL REFERENCES suppliers(supplier_id),
+  po_id INTEGER NOT NULL REFERENCES purchase_orders_col(po_id),
+  supplier_id INTEGER NOT NULL REFERENCES suppliers_col(supplier_id),
   receipt_number VARCHAR(30) NOT NULL,
   received_date DATE NOT NULL,
   received_by VARCHAR(200),
@@ -145,10 +145,10 @@ CREATE TABLE goods_receipts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE supplier_invoices (
+CREATE TABLE supplier_invoices_col (
   supplier_invoice_id SERIAL PRIMARY KEY,
-  supplier_id INTEGER NOT NULL REFERENCES suppliers(supplier_id),
-  po_id INTEGER NOT NULL REFERENCES purchase_orders(po_id),
+  supplier_id INTEGER NOT NULL REFERENCES suppliers_col(supplier_id),
+  po_id INTEGER NOT NULL REFERENCES purchase_orders_col(po_id),
   invoice_number VARCHAR(50) NOT NULL,
   amount DECIMAL(12,2) NOT NULL,
   submitted_date DATE NOT NULL,
@@ -159,10 +159,10 @@ CREATE TABLE supplier_invoices (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE outgoing_payments (
+CREATE TABLE outgoing_payments_col (
   outgoing_payment_id SERIAL PRIMARY KEY,
-  supplier_invoice_id INTEGER NOT NULL REFERENCES supplier_invoices(supplier_invoice_id),
-  supplier_id INTEGER NOT NULL REFERENCES suppliers(supplier_id),
+  supplier_invoice_id INTEGER NOT NULL REFERENCES supplier_invoices_col(supplier_invoice_id),
+  supplier_id INTEGER NOT NULL REFERENCES suppliers_col(supplier_id),
   amount DECIMAL(12,2) NOT NULL,
   payment_method VARCHAR(20) NOT NULL,
   payment_date TIMESTAMP DEFAULT NOW(),
@@ -172,12 +172,12 @@ CREATE TABLE outgoing_payments (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE three_way_matches (
+CREATE TABLE three_way_matches_col (
   match_id SERIAL PRIMARY KEY,
-  po_id INTEGER NOT NULL REFERENCES purchase_orders(po_id),
-  receipt_id INTEGER NOT NULL REFERENCES goods_receipts(receipt_id),
-  supplier_invoice_id INTEGER NOT NULL REFERENCES supplier_invoices(supplier_invoice_id),
-  supplier_id INTEGER NOT NULL REFERENCES suppliers(supplier_id),
+  po_id INTEGER NOT NULL REFERENCES purchase_orders_col(po_id),
+  receipt_id INTEGER NOT NULL REFERENCES goods_receipts_col(receipt_id),
+  supplier_invoice_id INTEGER NOT NULL REFERENCES supplier_invoices_col(supplier_invoice_id),
+  supplier_id INTEGER NOT NULL REFERENCES suppliers_col(supplier_id),
   match_status VARCHAR(20) NOT NULL DEFAULT 'PENDING_REVIEW',  -- MATCHED | MISMATCH | PENDING_REVIEW
   po_amount DECIMAL(12,2) NOT NULL,
   receipt_amount DECIMAL(12,2) NOT NULL,
@@ -191,9 +191,9 @@ CREATE TABLE three_way_matches (
 
 -- ─── ML OUTPUT TABLES ─────────────────────────────────────────
 
-CREATE TABLE payer_segments (
+CREATE TABLE payer_segments_col (
   segment_id SERIAL PRIMARY KEY,
-  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers(customer_id),
+  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers_col(customer_id),
   segment_name VARCHAR(50) NOT NULL,   -- e.g. 'RELIABLE_PAYER', 'CHRONIC_LATE', 'ERRATIC'
   regularity_score DECIMAL(5,2) NOT NULL,
   amount_score DECIMAL(5,2) NOT NULL,
@@ -202,9 +202,9 @@ CREATE TABLE payer_segments (
   scored_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE delinquency_scores (
+CREATE TABLE delinquency_scores_col (
   delinquency_id SERIAL PRIMARY KEY,
-  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers(customer_id),
+  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers_col(customer_id),
   risk_score DECIMAL(5,4) NOT NULL,    -- 0.0 to 1.0
   risk_level VARCHAR(10) NOT NULL,     -- LOW | MEDIUM | HIGH | CRITICAL
   days_overdue_avg DECIMAL(6,1),
@@ -214,9 +214,9 @@ CREATE TABLE delinquency_scores (
   scored_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE credit_risk_scores (
+CREATE TABLE credit_risk_scores_col (
   credit_risk_id SERIAL PRIMARY KEY,
-  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers(customer_id),
+  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers_col(customer_id),
   risk_score DECIMAL(5,4) NOT NULL,
   risk_level VARCHAR(10) NOT NULL,     -- LOW | MEDIUM | HIGH | CRITICAL
   outstanding_balance DECIMAL(12,2),
@@ -226,7 +226,7 @@ CREATE TABLE credit_risk_scores (
   scored_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE insight_cards (
+CREATE TABLE insight_cards_col (
   id SERIAL PRIMARY KEY,
   severity VARCHAR(15) NOT NULL,       -- info | warning | alert | opportunity
   title VARCHAR(200) NOT NULL,
@@ -240,7 +240,7 @@ CREATE TABLE insight_cards (
   expires_at TIMESTAMP
 );
 
-CREATE TABLE cash_flow_forecasts (
+CREATE TABLE cash_flow_forecasts_col (
   forecast_id SERIAL PRIMARY KEY,
   forecast_date DATE NOT NULL,
   predicted_inflow DECIMAL(14,2) NOT NULL,
@@ -251,9 +251,9 @@ CREATE TABLE cash_flow_forecasts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE payment_patterns (
+CREATE TABLE payment_patterns_col (
   pattern_id SERIAL PRIMARY KEY,
-  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers(customer_id),
+  customer_id INTEGER NOT NULL UNIQUE REFERENCES customers_col(customer_id),
   avg_days_to_pay DECIMAL(6,1),
   preferred_method VARCHAR(20),
   typical_payment_day INTEGER,
@@ -263,10 +263,10 @@ CREATE TABLE payment_patterns (
 
 -- Virtual views for the AI to reference:
 -- v_customer_overview: customer_id, account_number, type, name, property_name,
---   segment_name (from payer_segments), delinquency risk_level (from delinquency_scores),
---   total_receivable (SUM invoices.balance_remaining), overdue_amount, last_payment_date
+--   segment_name (from payer_segments_col), delinquency risk_level (from delinquency_scores_col),
+--   total_receivable (SUM invoices_col.balance_remaining), overdue_amount, last_payment_date
 -- v_supplier_overview: supplier_id, name, category, type,
---   total_payable (SUM supplier_invoices unpaid), open_pos (COUNT), blocked_invoices (COUNT mismatches)
+--   total_payable (SUM supplier_invoices_col unpaid), open_pos (COUNT), blocked_invoices (COUNT mismatches)
 -- v_three_way_match: match_id, po_number, supplier name, project_name,
 --   po_amount, receipt_amount, invoice_amount, match_status, payment_status
 `

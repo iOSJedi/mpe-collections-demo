@@ -64,8 +64,8 @@ def _fetch_credit_features():
                 END) AS max_days_overdue_last_90d,
                 SUM(CAST(i.balance_remaining AS numeric)) AS total_outstanding,
                 SUM(CAST(i.amount AS numeric))            AS total_invoiced
-            FROM invoices i
-            LEFT JOIN incoming_payments ip ON ip.invoice_id = i.invoice_id
+            FROM invoices_col i
+            LEFT JOIN incoming_payments_col ip ON ip.invoice_id = i.invoice_id
             GROUP BY i.customer_id
         ),
         payment_trend AS (
@@ -83,14 +83,14 @@ def _fetch_credit_features():
                         )
                         FROM (
                             SELECT ip3.payment_date, ip3.invoice_id
-                            FROM incoming_payments ip3
-                            JOIN invoices i3 ON ip3.invoice_id = i3.invoice_id
+                            FROM incoming_payments_col ip3
+                            JOIN invoices_col i3 ON ip3.invoice_id = i3.invoice_id
                             WHERE i3.customer_id = i.customer_id
                             ORDER BY ip3.payment_date DESC
                             LIMIT 3
                         ) sub
-                        JOIN incoming_payments ip2 ON ip2.payment_date = sub.payment_date
-                        JOIN invoices i2 ON ip2.invoice_id = sub.invoice_id
+                        JOIN incoming_payments_col ip2 ON ip2.payment_date = sub.payment_date
+                        JOIN invoices_col i2 ON ip2.invoice_id = sub.invoice_id
                     ) -
                     (
                         SELECT AVG(
@@ -102,18 +102,18 @@ def _fetch_credit_features():
                         )
                         FROM (
                             SELECT ip3.payment_date, ip3.invoice_id
-                            FROM incoming_payments ip3
-                            JOIN invoices i3 ON ip3.invoice_id = i3.invoice_id
+                            FROM incoming_payments_col ip3
+                            JOIN invoices_col i3 ON ip3.invoice_id = i3.invoice_id
                             WHERE i3.customer_id = i.customer_id
                             ORDER BY ip3.payment_date DESC
                             LIMIT 6 OFFSET 3
                         ) sub
-                        JOIN incoming_payments ip2 ON ip2.payment_date = sub.payment_date
-                        JOIN invoices i2 ON ip2.invoice_id = sub.invoice_id
+                        JOIN incoming_payments_col ip2 ON ip2.payment_date = sub.payment_date
+                        JOIN invoices_col i2 ON ip2.invoice_id = sub.invoice_id
                     ),
                     0
                 ) AS payment_trend_slope
-            FROM invoices i
+            FROM invoices_col i
             GROUP BY i.customer_id
         ),
         activity_stats AS (
@@ -160,8 +160,8 @@ def _fetch_credit_features():
                     ELSE 0
                 END AS avg_payment_ratio_change,
                 SUM(CAST(ip.amount AS numeric)) AS total_lifetime_payments
-            FROM invoices i
-            LEFT JOIN incoming_payments ip ON ip.invoice_id = i.invoice_id
+            FROM invoices_col i
+            LEFT JOIN incoming_payments_col ip ON ip.invoice_id = i.invoice_id
             GROUP BY i.customer_id
         )
         SELECT
@@ -182,7 +182,7 @@ def _fetch_credit_features():
             COALESCE(ast.total_lifetime_payments, 0)   AS total_lifetime_payments,
             COALESCE(ps.total_outstanding, 0)          AS outstanding_balance,
             COALESCE(ps.total_invoiced, 0)             AS total_invoiced
-        FROM customers c
+        FROM customers_col c
         LEFT JOIN payment_stats ps  ON c.customer_id = ps.customer_id
         LEFT JOIN payment_trend pt  ON c.customer_id = pt.customer_id
         LEFT JOIN activity_stats ast ON c.customer_id = ast.customer_id

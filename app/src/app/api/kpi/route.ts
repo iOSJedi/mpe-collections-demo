@@ -18,14 +18,14 @@ export const GET = withAuth(async (_request: NextRequest) => {
       // total_receivables: SUM(balance_remaining) from invoices where status != 'PAID'
       db.execute(sql`
         SELECT COALESCE(SUM(balance_remaining::numeric), 0) AS total_receivables
-        FROM invoices
+        FROM invoices_col
         WHERE status != 'PAID'
       `),
 
       // overdue_receivables: SUM(balance_remaining) where due_date < NOW() and status != 'PAID'
       db.execute(sql`
         SELECT COALESCE(SUM(balance_remaining::numeric), 0) AS overdue_receivables
-        FROM invoices
+        FROM invoices_col
         WHERE due_date < CURRENT_DATE
           AND status != 'PAID'
       `),
@@ -38,29 +38,29 @@ export const GET = withAuth(async (_request: NextRequest) => {
           )::numeric, 1),
           0
         ) AS dso
-        FROM invoices i
-        JOIN incoming_payments ip ON ip.invoice_id = i.invoice_id
+        FROM invoices_col i
+        JOIN incoming_payments_col ip ON ip.invoice_id = i.invoice_id
         WHERE i.status = 'PAID'
           AND ip.status = 'CONFIRMED'
       `),
 
-      // blocked_invoices: COUNT(*) from three_way_matches where match_status = 'MISMATCH'
+      // blocked_invoices: COUNT(*) from three_way_matches_col where match_status = 'MISMATCH'
       db.execute(sql`
         SELECT COUNT(*) AS blocked_invoices
-        FROM three_way_matches
+        FROM three_way_matches_col
         WHERE match_status = 'MISMATCH'
       `),
 
-      // total_customers: COUNT(*) from customers
+      // total_customers: COUNT(*) from customers_col
       db.execute(sql`
         SELECT COUNT(*) AS total_customers
-        FROM customers
+        FROM customers_col
       `),
 
-      // overdue_customers: COUNT(DISTINCT customer_id) from invoices where status = 'OVERDUE'
+      // overdue_customers: COUNT(DISTINCT customer_id) from invoices_col where status = 'OVERDUE'
       db.execute(sql`
         SELECT COUNT(DISTINCT customer_id) AS overdue_customers
-        FROM invoices
+        FROM invoices_col
         WHERE status = 'OVERDUE'
       `),
 
@@ -69,13 +69,13 @@ export const GET = withAuth(async (_request: NextRequest) => {
         SELECT
           COUNT(CASE WHEN status = 'PAID' THEN 1 END)::numeric AS paid_count,
           COUNT(*)::numeric AS total_count
-        FROM invoices
+        FROM invoices_col
       `),
 
-      // total_payables: SUM(amount - amount_paid) from supplier_invoices where payment_status != 'PAID'
+      // total_payables: SUM(amount - amount_paid) from supplier_invoices_col where payment_status != 'PAID'
       db.execute(sql`
         SELECT COALESCE(SUM((amount::numeric - amount_paid::numeric)), 0) AS total_payables
-        FROM supplier_invoices
+        FROM supplier_invoices_col
         WHERE payment_status != 'PAID'
       `),
     ])
