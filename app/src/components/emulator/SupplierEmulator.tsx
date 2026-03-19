@@ -51,13 +51,18 @@ function WorkflowTimeline({ claimId }: { claimId: number }) {
     setLoading(true)
     setError(null)
     apiFetch(`/api/payable/claims/${claimId}/timeline`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((data) => {
+        console.log('Timeline data for claim', claimId, data)
         setEvents(Array.isArray(data.events) ? data.events : [])
         setFutureSteps(Array.isArray(data.futureSteps) ? data.futureSteps : [])
         setLoading(false)
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Timeline fetch error:', err)
         setError('Failed to load timeline')
         setLoading(false)
       })
@@ -67,14 +72,14 @@ function WorkflowTimeline({ claimId }: { claimId: number }) {
   if (error) return <p className="text-xs text-red-500">{error}</p>
 
   return (
-    <div className="space-y-1 mt-2">
+    <div className="space-y-1.5 mt-2">
       {events.map((ev) => (
         <div key={ev.eventId} className="flex items-start gap-2">
-          <div className="mt-1 h-2 w-2 rounded-full bg-[#C5A930] shrink-0" />
+          <div className="mt-0.5 h-3 w-3 rounded-full bg-green-500 shrink-0 ring-1 ring-green-300" />
           <div>
-            <p className="text-xs font-medium">{formatStatus(ev.eventType)}</p>
+            <p className="text-xs font-semibold text-green-700">{formatStatus(ev.eventType)}</p>
             {ev.performedBy && (
-              <p className="text-[10px] text-muted-foreground">{ev.performedBy}</p>
+              <p className="text-[10px] text-muted-foreground">by {ev.performedBy}</p>
             )}
             {ev.createdAt && (
               <p className="text-[10px] text-muted-foreground">
@@ -84,9 +89,15 @@ function WorkflowTimeline({ claimId }: { claimId: number }) {
           </div>
         </div>
       ))}
-      {futureSteps.map((step) => (
+      {futureSteps.length > 0 && events.length > 0 && (
+        <div className="flex items-start gap-2">
+          <div className="mt-0.5 h-3 w-3 rounded-full bg-amber-400 shrink-0 ring-1 ring-amber-300 animate-pulse" />
+          <p className="text-xs font-medium text-amber-600">{formatStatus(futureSteps[0])} <span className="text-[10px] font-normal text-muted-foreground">(waiting)</span></p>
+        </div>
+      )}
+      {futureSteps.slice(events.length > 0 ? 1 : 0).map((step) => (
         <div key={step} className="flex items-start gap-2 opacity-40">
-          <div className="mt-1 h-2 w-2 rounded-full border border-gray-400 shrink-0" />
+          <div className="mt-0.5 h-3 w-3 rounded-full border border-gray-400 shrink-0" />
           <p className="text-xs">{formatStatus(step)}</p>
         </div>
       ))}
