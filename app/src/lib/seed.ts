@@ -1083,6 +1083,9 @@ export async function seedDatabase() {
 
   const penaltyRate = 2.0
   let penaltyCount = 0
+  const penaltyBatch: { invoiceId: number; periodLabel: string; penaltyAmount: string; penaltyRate: string; accrualDate: string; status: string; paidAmount: string }[] = []
+  const invoicePenaltyTotals: { invoiceId: number; total: number }[] = []
+
   for (const inv of overdueInvs) {
     const dueDate = new Date(inv.dueDate)
     const now = new Date('2026-03-19')
@@ -1093,7 +1096,7 @@ export async function seedDatabase() {
     for (let m = 1; m <= monthsOverdue; m++) {
       const penAmt = Math.round(principal * (penaltyRate / 100) * 100) / 100
       const accrualDate = addMonths(dueDate, m)
-      await db.insert(penaltyLedger).values({
+      penaltyBatch.push({
         invoiceId: inv.invoiceId,
         periodLabel: `Month ${m}`,
         penaltyAmount: String(penAmt),
@@ -1106,10 +1109,20 @@ export async function seedDatabase() {
       penaltyCount++
     }
 
-    // Update denormalized totals
+    invoicePenaltyTotals.push({ invoiceId: inv.invoiceId, total: totalPen })
+  }
+
+  // Batch insert penalties in chunks of 50
+  for (let i = 0; i < penaltyBatch.length; i += 50) {
+    const chunk = penaltyBatch.slice(i, i + 50)
+    await db.insert(penaltyLedger).values(chunk)
+  }
+
+  // Update denormalized totals on invoices
+  for (const { invoiceId, total } of invoicePenaltyTotals) {
     await db.update(invoices)
-      .set({ totalPenalties: String(totalPen), penaltiesPaid: '0' })
-      .where(eq(invoices.invoiceId, inv.invoiceId))
+      .set({ totalPenalties: String(total), penaltiesPaid: '0' })
+      .where(eq(invoices.invoiceId, invoiceId))
   }
   console.log(`  ${penaltyCount} penalty ledger entries seeded`)
 
@@ -1119,19 +1132,23 @@ export async function seedDatabase() {
   const confirmedPayments = await db.select().from(incomingPayments)
     .where(eq(incomingPayments.status, 'CONFIRMED'))
 
-  let allocCount = 0
+  const allocBatch: { paymentId: number; invoiceId: number; allocationType: string; amount: string }[] = []
   for (const pay of confirmedPayments) {
     if (pay.invoiceId) {
-      await db.insert(paymentAllocations).values({
+      allocBatch.push({
         paymentId: pay.paymentId,
         invoiceId: pay.invoiceId,
         allocationType: 'PRINCIPAL',
         amount: pay.amount,
       })
-      allocCount++
     }
   }
-  console.log(`  ${allocCount} payment allocations seeded`)
+  // Batch insert in chunks of 50
+  for (let i = 0; i < allocBatch.length; i += 50) {
+    const chunk = allocBatch.slice(i, i + 50)
+    await db.insert(paymentAllocations).values(chunk)
+  }
+  console.log(`  ${allocBatch.length} payment allocations seeded`)
 
   // ── 19. AP Workflow Events ────────────────────────────────────────────────
 
@@ -1141,8 +1158,8 @@ export async function seedDatabase() {
     po: purchaseOrders,
     sup: suppliers,
   }).from(supplierInvoices)
-    .innerJoin(purchaseOrders, eq(supplierInvoices.poId, purchaseOrders.poId))
-    .innerJoin(suppliers, eq(supplierInvoices.supplierId, suppliers.supplierId))
+    .leftJoin(purchaseOrders, eq(supplierInvoices.poId, purchaseOrders.poId))
+    .leftJoin(suppliers, eq(supplierInvoices.supplierId, suppliers.supplierId))
 
   const WORKFLOW_STEPS: { eventType: string; status: string; performer: string }[] = [
     { eventType: 'CLAIM_SUBMITTED', status: 'SUBMITTED', performer: 'supplier' },
@@ -1156,17 +1173,19 @@ export async function seedDatabase() {
   ]
 
   let eventCount = 0
+  const eventBatch: { supplierInvoiceId: number; poId: number; eventType: string; eventData: Record<string, unknown>; performedBy: string; createdAt: Date }[] = []
+
   for (let i = 0; i < allSupplierInvoices.length; i++) {
     const { si, po, sup } = allSupplierInvoices[i]
+    if (!po || !sup) continue // skip if join returned null
 
     // Determine how far along the workflow based on payment status
     let stepsCompleted: number
     if (si.paymentStatus === 'PAID') {
-      stepsCompleted = 8 // all steps
+      stepsCompleted = 8
     } else if (si.paymentStatus === 'PARTIAL') {
-      stepsCompleted = 6 // up to FM_APPROVED
+      stepsCompleted = 6
     } else {
-      // UNPAID — distribute across early stages
       stepsCompleted = pick([2, 3, 4, 5])
     }
 
@@ -1175,12 +1194,11 @@ export async function seedDatabase() {
       .set({ workflowStatus: finalStatus })
       .where(eq(supplierInvoices.supplierInvoiceId, si.supplierInvoiceId))
 
-    // Create events for completed steps
     const baseDate = new Date(si.submittedDate)
     for (let s = 0; s < stepsCompleted; s++) {
       const step = WORKFLOW_STEPS[s]
       const eventDate = addDays(baseDate, s * 2 + randInt(0, 1))
-      await db.insert(apWorkflowEvents).values({
+      eventBatch.push({
         supplierInvoiceId: si.supplierInvoiceId,
         poId: si.poId,
         eventType: step.eventType,
@@ -1190,6 +1208,12 @@ export async function seedDatabase() {
       })
       eventCount++
     }
+  }
+
+  // Batch insert workflow events in chunks of 50
+  for (let i = 0; i < eventBatch.length; i += 50) {
+    const chunk = eventBatch.slice(i, i + 50)
+    await db.insert(apWorkflowEvents).values(chunk)
   }
   console.log(`  ${eventCount} AP workflow events seeded`)
 
