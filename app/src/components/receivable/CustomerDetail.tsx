@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { CustomerDetail as CustomerDetailType, ContractSummary, CustomerBreakdown, PaymentWithAllocations, InvoiceSummary, PaymentSummary } from '@/types'
+import type { CustomerDetail as CustomerDetailType, ContractSummary, CustomerBreakdown, PaymentWithAllocations } from '@/types'
 import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { InvoiceBreakdown } from './InvoiceBreakdown'
@@ -116,124 +116,6 @@ function ContractsSection({ contracts }: { contracts: ContractSummary[] }) {
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-type SortDir = 'asc' | 'desc'
-
-function InvoicesTable({ invoices }: { invoices: InvoiceSummary[] }) {
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-
-  const sorted = [...invoices].sort((a, b) => {
-    const diff = new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-    return sortDir === 'asc' ? diff : -diff
-  })
-
-  const toggleSort = () => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-
-  return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
-        <span className="font-semibold text-slate-700 text-sm">Invoices (last 6 months)</span>
-      </div>
-      <div className="overflow-x-auto">
-        {invoices.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-6">No invoices in the last 6 months.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-white border-b border-slate-100">
-              <tr>
-                <th className="text-left px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Invoice #</th>
-                <th className="text-left px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Contract #</th>
-                <th className="text-left px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Billing Period</th>
-                <th
-                  className="text-left px-4 py-2 font-medium text-slate-500 whitespace-nowrap cursor-pointer select-none hover:text-slate-700"
-                  onClick={toggleSort}
-                >
-                  Due Date {sortDir === 'asc' ? '↑' : '↓'}
-                </th>
-                <th className="text-right px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Amount</th>
-                <th className="text-right px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Balance</th>
-                <th className="text-left px-4 py-2 font-medium text-slate-500">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {sorted.map((inv) => (
-                <tr key={inv.invoice_id} className="hover:bg-slate-50">
-                  <td className="px-4 py-2 font-mono text-xs text-slate-600 whitespace-nowrap">{inv.invoice_number}</td>
-                  <td className="px-4 py-2 font-mono text-xs text-slate-500 whitespace-nowrap">{inv.contract_number}</td>
-                  <td className="px-4 py-2 text-slate-600 whitespace-nowrap text-xs">
-                    {inv.billing_period_start} – {inv.billing_period_end}
-                  </td>
-                  <td className={`px-4 py-2 whitespace-nowrap text-xs ${inv.status === 'OVERDUE' ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
-                    {inv.due_date}
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium text-slate-800 whitespace-nowrap">
-                    {formatCurrency(inv.amount)}
-                  </td>
-                  <td className={`px-4 py-2 text-right font-medium whitespace-nowrap ${inv.balance_remaining > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                    {inv.balance_remaining > 0 ? formatCurrency(inv.balance_remaining) : '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <Badge label={inv.status} className={STATUS_BADGE[inv.status]} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function PaymentHistoryTable({ payments }: { payments: PaymentSummary[] }) {
-  return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
-        <span className="font-semibold text-slate-700 text-sm">Payment History (last 20)</span>
-      </div>
-      <div className="overflow-x-auto">
-        {payments.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-6">No payment history found.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-white border-b border-slate-100">
-              <tr>
-                <th className="text-left px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Date</th>
-                <th className="text-left px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Invoice #</th>
-                <th className="text-right px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Amount</th>
-                <th className="text-left px-4 py-2 font-medium text-slate-500">Method</th>
-                <th className="text-left px-4 py-2 font-medium text-slate-500 whitespace-nowrap">Reference #</th>
-                <th className="text-left px-4 py-2 font-medium text-slate-500">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {payments.map((p) => (
-                <tr key={p.payment_id} className="hover:bg-slate-50">
-                  <td className="px-4 py-2 text-slate-600 whitespace-nowrap text-xs">
-                    {p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-PH') : '—'}
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs text-slate-600 whitespace-nowrap">{p.invoice_number}</td>
-                  <td className="px-4 py-2 text-right font-medium text-slate-800 whitespace-nowrap">
-                    {formatCurrency(p.amount)}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <Badge label={p.payment_method} className={METHOD_BADGE[p.payment_method]} />
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs text-slate-500 whitespace-nowrap">
-                    {p.reference_number ?? '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <Badge label={p.status} className={STATUS_BADGE[p.status]} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
     </div>
   )
 }
