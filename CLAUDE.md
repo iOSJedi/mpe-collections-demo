@@ -23,10 +23,38 @@ All commands run from `/app`:
 npm run dev          # Dev server at localhost:3000
 npm run build        # Production build
 npm run lint         # ESLint
-npx drizzle-kit push # Push schema changes to DB
 ```
 
 No test framework is configured.
+
+### Pushing Schema Changes
+
+`drizzle-kit push` does NOT work from this environment (WSL2 cannot reach the Supabase direct PostgreSQL host over IPv6). Instead, push DDL through the SQL proxy:
+
+```bash
+curl -s -X POST "$SUPABASE_SQL_PROXY_URL" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $SUPABASE_SQL_PROXY_KEY" \
+  -d '{"sql":"<DDL STATEMENT HERE>","params":[],"method":"execute"}'
+```
+
+For schema changes, write the raw SQL (CREATE TABLE, ALTER TABLE, CREATE INDEX) and execute each statement via the proxy. Example:
+
+```bash
+# Create a new table
+curl -s -X POST "$SUPABASE_SQL_PROXY_URL" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $SUPABASE_SQL_PROXY_KEY" \
+  -d '{"sql":"CREATE TABLE IF NOT EXISTS my_table_col (id SERIAL PRIMARY KEY, name VARCHAR(200) NOT NULL);","params":[],"method":"execute"}'
+
+# Add a column to an existing table
+curl -s -X POST "$SUPABASE_SQL_PROXY_URL" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $SUPABASE_SQL_PROXY_KEY" \
+  -d '{"sql":"ALTER TABLE my_table_col ADD COLUMN IF NOT EXISTS new_col TEXT;","params":[],"method":"execute"}'
+```
+
+The env vars `SUPABASE_SQL_PROXY_URL` and `SUPABASE_SQL_PROXY_KEY` are in `/app/.env`. Always use `IF NOT EXISTS` / `IF EXISTS` for idempotency.
 
 ## Tech Stack
 
