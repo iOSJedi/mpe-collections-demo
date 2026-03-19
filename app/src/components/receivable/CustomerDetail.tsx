@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { CustomerDetail as CustomerDetailType, ContractSummary, InvoiceSummary, PaymentSummary } from '@/types'
+import type { CustomerDetail as CustomerDetailType, ContractSummary, CustomerBreakdown, PaymentWithAllocations, InvoiceSummary, PaymentSummary } from '@/types'
 import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
+import { InvoiceBreakdown } from './InvoiceBreakdown'
+import { PaymentAllocations } from './PaymentAllocations'
 
 // ─── Badge helpers ─────────────────────────────────────────────────────────
 
@@ -243,20 +245,32 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
   const [data, setData] = useState<CustomerDetailType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [breakdownPayments, setBreakdownPayments] = useState<PaymentWithAllocations[]>([])
 
   useEffect(() => {
     if (!customerId || isNaN(customerId)) return
     setLoading(true)
     setError(null)
-    apiFetch(`/api/receivable/${customerId}`)
-      .then(async (res) => {
+
+    Promise.all([
+      apiFetch(`/api/receivable/${customerId}`).then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
           throw new Error(body?.error ?? 'Failed to load customer')
         }
         return res.json() as Promise<CustomerDetailType>
+      }),
+      apiFetch(`/api/receivable/${customerId}/breakdown`).then(async (res) => {
+        if (!res.ok) return null
+        return res.json() as Promise<CustomerBreakdown>
+      }).catch(() => null),
+    ])
+      .then(([customerData, breakdownData]) => {
+        setData(customerData)
+        if (breakdownData) {
+          setBreakdownPayments(breakdownData.payments)
+        }
       })
-      .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : 'Unknown error'))
       .finally(() => setLoading(false))
   }, [customerId])
@@ -451,11 +465,11 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
       {/* Contracts */}
       <ContractsSection contracts={data.contracts} />
 
-      {/* Invoices */}
-      <InvoicesTable invoices={data.invoices} />
+      {/* Invoice breakdown with penalty details */}
+      <InvoiceBreakdown customerId={customerId} />
 
-      {/* Payment history */}
-      <PaymentHistoryTable payments={data.recent_payments} />
+      {/* Payment history with allocation detail */}
+      <PaymentAllocations payments={breakdownPayments} />
     </div>
   )
 }
