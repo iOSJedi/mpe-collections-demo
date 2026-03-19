@@ -259,9 +259,139 @@ export interface OverviewKPIs {
 }
 
 // Emulator
+export type EmulatorMode = 'payer' | 'supplier'
+
 export interface EmulatorState {
   isOpen: boolean
+  mode: EmulatorMode
+  // Payer mode
   selectedCustomerId: number | null
   activeTab: 'invoices' | 'qr' | 'upload' | 'history'
   selectedInvoiceId: number | null
+  // Supplier mode
+  selectedSupplierId: number | null
+  selectedPoId: number | null
+}
+
+// ─── Penalty & Allocation Types ─────────────────────────────
+
+export interface PenaltyConfig {
+  configId: number
+  penaltyRatePercent: number
+  penaltyFrequency: string
+  applicationMethod: 'PENALTIES_FIRST' | 'FIFO'
+  gracePeriodDays: number
+}
+
+export interface PenaltyLedgerEntry {
+  penaltyId: number
+  invoiceId: number
+  periodLabel: string
+  penaltyAmount: number
+  penaltyRate: number
+  accrualDate: string
+  status: 'ACTIVE' | 'PAID' | 'WAIVED'
+  paidAmount: number
+}
+
+export interface PaymentAllocation {
+  allocationId: number
+  paymentId: number
+  invoiceId: number
+  penaltyId: number | null
+  allocationType: 'PRINCIPAL' | 'PENALTY'
+  amount: number
+}
+
+export interface InvoiceBreakdownItem {
+  invoiceId: number
+  invoiceNumber: string
+  billingPeriodStart: string
+  billingPeriodEnd: string
+  dueDate: string
+  amount: number
+  balanceRemaining: number
+  status: string
+  contractNumber: string
+  totalPenalties: number
+  penaltiesPaid: number
+  penalties: PenaltyLedgerEntry[]
+  daysOverdue: number
+}
+
+export interface PaymentWithAllocations {
+  paymentId: number
+  amount: number
+  paymentMethod: string
+  paymentDate: string
+  referenceNumber: string | null
+  status: string
+  allocations: PaymentAllocation[]
+}
+
+export interface CustomerBreakdown {
+  customer: { customerId: number; name: string; accountNumber: string }
+  invoices: InvoiceBreakdownItem[]
+  payments: PaymentWithAllocations[]
+  totals: {
+    totalPrincipal: number
+    totalPenalties: number
+    totalPaid: number
+    grandTotalDue: number
+  }
+}
+
+export interface AllocationPreview {
+  applied: { invoiceId: number; invoiceNumber: string; allocationType: 'PRINCIPAL' | 'PENALTY'; penaltyId?: number; periodLabel?: string; amount: number }[]
+  remaining: { invoiceId: number; invoiceNumber: string; type: 'PRINCIPAL' | 'PENALTY'; periodLabel?: string; amount: number }[]
+  totalApplied: number
+  totalRemaining: number
+  monthlyPenaltyAccrual: number
+}
+
+// ─── AP Workflow Types ──────────────────────────────────────
+
+export type WorkflowStatus = 'SUBMITTED' | 'GR_CONFIRMED' | 'MATCHED' | 'PENDING_AP_REVIEW' | 'AP_APPROVED' | 'PENDING_FM_REVIEW' | 'FM_APPROVED' | 'REJECTED' | 'PAYMENT_SCHEDULED' | 'RELEASED'
+
+export type WorkflowEventType = 'CLAIM_SUBMITTED' | 'DELIVERY_REPORT_UPLOADED' | 'GR_CONFIRMED' | 'INVOICE_SUBMITTED' | 'THREE_WAY_MATCH' | 'AP_CLERK_APPROVED' | 'AP_CLERK_REJECTED' | 'FM_APPROVED' | 'FM_REJECTED' | 'PAYMENT_SCHEDULED' | 'PAYMENT_RELEASED'
+
+export interface WorkflowEvent {
+  eventId: number
+  supplierInvoiceId: number
+  poId: number
+  eventType: WorkflowEventType
+  eventData: Record<string, unknown> | null
+  performedBy: string | null
+  notes: string | null
+  createdAt: string
+}
+
+export interface ClaimSummary {
+  supplierInvoiceId: number
+  invoiceNumber: string
+  supplierName: string
+  supplierId: number
+  poNumber: string
+  poId: number
+  amount: number
+  workflowStatus: WorkflowStatus
+  submittedDate: string
+  grVerified: boolean
+  threeWayMatch: string | null
+  claimDocumentUrl: string | null
+}
+
+// ─── Document Viewer Types ──────────────────────────────────
+
+export interface DocumentViewerData {
+  documentId: number
+  fileUrl: string
+  fileName: string
+  fileType: string
+  ocrResult: OcrResult | null
+  ocrStatus: string
+  validationResult: ValidationResult | null
+  customerName?: string
+  invoiceNumber?: string
+  expectedAmount?: number
 }
