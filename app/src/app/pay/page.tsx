@@ -2,15 +2,31 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { PaymentPageData } from '@/types'
+import { PaymentPageData, InvoiceBreakdownItem } from '@/types'
 import { PaymentForm } from '@/components/pay/PaymentForm'
+import { BalanceBreakdown } from '@/components/pay/BalanceBreakdown'
+import { PartialPaymentCalculator } from '@/components/pay/PartialPaymentCalculator'
 import { Loader2, ShieldCheck } from 'lucide-react'
+
+interface BreakdownTotals {
+  totalPrincipal: number
+  totalPenalties: number
+  totalPaid: number
+  grandTotalDue: number
+}
 
 interface PaymentState {
   data: PaymentPageData
   invoiceId: number
   customerId: number
+  breakdown: {
+    invoices: InvoiceBreakdownItem[]
+    totals: BreakdownTotals
+  } | null
+  penaltyRate: number
 }
+
+type PortalView = 'breakdown' | 'full' | 'partial'
 
 function PayPage() {
   const searchParams = useSearchParams()
@@ -19,6 +35,8 @@ function PayPage() {
   const [state, setState] = useState<PaymentState | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<PortalView>('breakdown')
+  const [partialAmount, setPartialAmount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -43,18 +61,46 @@ function PayPage() {
           return
         }
 
+        const paymentData: PaymentPageData = {
+          invoice_number: json.invoice_number,
+          contract_number: json.contract_number,
+          account_number: json.account_number,
+          customer_name: json.customer_name,
+          due_date: json.due_date,
+          amount: json.amount,
+          balance_remaining: json.balance_remaining,
+        }
+
+        // Also load breakdown (unauthenticated — verified by the same token)
+        let breakdownData: PaymentState['breakdown'] = null
+        let penaltyRate = 2 // default
+        try {
+          const bdRes = await fetch('/api/pay/breakdown', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customerId: json.customerId, token }),
+          })
+          if (bdRes.ok) {
+            const bd = await bdRes.json()
+            breakdownData = { invoices: bd.invoices, totals: bd.totals }
+            // Infer penalty rate from first active penalty if available
+            const firstPenalty = bd.invoices
+              ?.flatMap((inv: InvoiceBreakdownItem) => inv.penalties)
+              ?.find((p: InvoiceBreakdownItem['penalties'][number]) => p.status === 'ACTIVE')
+            if (firstPenalty?.penaltyRate) {
+              penaltyRate = firstPenalty.penaltyRate
+            }
+          }
+        } catch {
+          // Non-fatal: breakdown unavailable, fall through to basic PaymentForm
+        }
+
         setState({
-          data: {
-            invoice_number: json.invoice_number,
-            contract_number: json.contract_number,
-            account_number: json.account_number,
-            customer_name: json.customer_name,
-            due_date: json.due_date,
-            amount: json.amount,
-            balance_remaining: json.balance_remaining,
-          },
+          data: paymentData,
           invoiceId: json.invoiceId,
           customerId: json.customerId,
+          breakdown: breakdownData,
+          penaltyRate,
         })
       } catch {
         setError('Failed to load payment details. Please try again.')
@@ -65,6 +111,19 @@ function PayPage() {
 
     loadPaymentData()
   }, [token])
+
+  // Derived payment data adjusted for partial amount
+  function getPaymentFormData(): PaymentPageData {
+    if (!state) return {} as PaymentPageData
+    if (partialAmount !== null) {
+      return { ...state.data, balance_remaining: partialAmount }
+    }
+    // For full payment, use grandTotalDue if breakdown available
+    if (state.breakdown) {
+      return { ...state.data, balance_remaining: state.breakdown.totals.grandTotalDue }
+    }
+    return state.data
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -83,7 +142,11 @@ function PayPage() {
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-[#003B1F]/5 border-b border-slate-200 px-6 py-4">
               <h1 className="text-lg font-semibold text-[#003B1F]">Payment Portal</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Secure online payment for your invoice</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {view === 'breakdown' && 'Review your outstanding balance'}
+                {view === 'full' && 'Secure online payment for your invoice'}
+                {view === 'partial' && 'Choose a partial payment amount'}
+              </p>
             </div>
 
             <div className="p-6">
@@ -106,12 +169,69 @@ function PayPage() {
               )}
 
               {!loading && !error && state && (
-                <PaymentForm
-                  data={state.data}
-                  invoiceId={state.invoiceId}
-                  customerId={state.customerId}
-                  token={token!}
-                />
+                <>
+                  {/* Breakdown view — shown first */}
+                  {view === 'breakdown' && state.breakdown && (
+                    <BalanceBreakdown
+                      invoices={state.breakdown.invoices}
+                      totals={state.breakdown.totals}
+                      onPayFull={() => {
+                        setPartialAmount(null)
+                        setView('full')
+                      }}
+                      onPayPartial={() => {
+                        setPartialAmount(null)
+                        setView('partial')
+                      }}
+                    />
+                  )}
+
+                  {/* If breakdown unavailable, go straight to payment form */}
+                  {view === 'breakdown' && !state.breakdown && (
+                    <PaymentForm
+                      data={state.data}
+                      invoiceId={state.invoiceId}
+                      customerId={state.customerId}
+                      token={token!}
+                    />
+                  )}
+
+                  {/* Partial payment calculator */}
+                  {view === 'partial' && (
+                    <PartialPaymentCalculator
+                      customerId={state.customerId}
+                      totalDue={state.breakdown?.totals.grandTotalDue ?? state.data.balance_remaining}
+                      penaltyRate={state.penaltyRate}
+                      onBack={() => setView('breakdown')}
+                      onPay={(amount) => {
+                        setPartialAmount(amount)
+                        setView('full')
+                      }}
+                    />
+                  )}
+
+                  {/* Payment form (full or partial amount) */}
+                  {view === 'full' && (
+                    <div className="space-y-4">
+                      {/* Back link */}
+                      <button
+                        onClick={() => {
+                          setPartialAmount(null)
+                          setView('breakdown')
+                        }}
+                        className="text-xs text-[#003B1F] hover:underline"
+                      >
+                        ← Back to balance summary
+                      </button>
+                      <PaymentForm
+                        data={getPaymentFormData()}
+                        invoiceId={state.invoiceId}
+                        customerId={state.customerId}
+                        token={token!}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
