@@ -1,6 +1,12 @@
 import { db } from '@/db'
-import { sql } from 'drizzle-orm'
+import { sql, eq } from 'drizzle-orm'
 import * as schema from '@/db/schema'
+import {
+  penaltyConfig, penaltyLedger, paymentAllocations, apWorkflowEvents,
+} from '@/db/schema'
+
+// Aliases for tables used in new seed steps (the rest use `schema.*`)
+const { invoices, incomingPayments, supplierInvoices, purchaseOrders, suppliers } = schema
 
 // ─── Seeded PRNG (Mulberry32) ─────────────────────────────────────────────────
 
@@ -195,9 +201,22 @@ export async function seedDatabase() {
     ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()
   `))
 
+  // Ensure new columns exist (idempotent)
+  await db.execute(sql.raw(`
+    ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS total_penalties DECIMAL(12,2) NOT NULL DEFAULT 0;
+    ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS penalties_paid DECIMAL(12,2) NOT NULL DEFAULT 0;
+    ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS workflow_status VARCHAR(30) NOT NULL DEFAULT 'SUBMITTED';
+    ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS claim_document_url TEXT;
+    ALTER TABLE incoming_payments_col ALTER COLUMN invoice_id DROP NOT NULL;
+  `))
+
   console.log('Truncating all tables...')
   // Use CASCADE to handle FK dependencies in one shot; RESTART IDENTITY resets serials.
   const tables = [
+    'penalty_config_col',
+    'penalty_ledger_col',
+    'payment_allocations_col',
+    'ap_workflow_events_col',
     'cash_flow_forecasts_col',
     'escalations_col',
     'documents_col',
@@ -460,7 +479,7 @@ export async function seedDatabase() {
       const project = pick(AYALA_PROJECTS)
       const issuedDate = new Date(2025, randInt(6, 9), randInt(1, 28)) // Jul-Oct 2025
       const deliveryDays = randInt(60, 180)
-      const amount = randInt(5_000_000, 500_000_000)
+      const amount = randInt(200_000, 5_000_000)
       poAmounts.push(amount)
 
       // Determine PO status based on date
@@ -1022,22 +1041,157 @@ export async function seedDatabase() {
     { year: 2026, month: 9 },
   ]
 
-  for (const { year, month } of forecastMonths) {
-    const baseInflow = 140_000_000 + randInt(-10_000_000, 15_000_000)
-    const baseOutflow = 90_000_000 + randInt(-8_000_000, 12_000_000)
+  // Simulate a growth trend with seasonal variation
+  const inflowTrend = [18_500_000, 19_200_000, 19_800_000, 20_100_000, 20_800_000, 21_500_000]
+  const outflowTrend = [13_200_000, 13_800_000, 13_500_000, 14_100_000, 14_600_000, 14_300_000]
+
+  for (let fi = 0; fi < forecastMonths.length; fi++) {
+    const { year, month } = forecastMonths[fi]
+    const baseInflow = inflowTrend[fi] + randInt(-800_000, 800_000)
+    const baseOutflow = outflowTrend[fi] + randInt(-500_000, 500_000)
+    const uncertainty = 0.05 + fi * 0.03
 
     cfRows.push({
       forecastDate: fmtDate(startOfMonth(year, month)),
       predictedInflow: String(baseInflow.toFixed(2)),
       predictedOutflow: String(baseOutflow.toFixed(2)),
-      confidenceLower: String((baseInflow * 0.92).toFixed(2)),
-      confidenceUpper: String((baseInflow * 1.08).toFixed(2)),
+      confidenceLower: String((baseInflow * (1 - uncertainty)).toFixed(2)),
+      confidenceUpper: String((baseInflow * (1 + uncertainty)).toFixed(2)),
       basedOnPeriod: 'Oct 2025 – Mar 2026',
     })
   }
 
   await db.insert(schema.cashFlowForecasts).values(cfRows)
   console.log(`  Inserted ${cfRows.length} cash flow forecasts`)
+
+  // ── 16. Penalty Config ────────────────────────────────────────────────────
+
+  console.log('Seeding penalty config...')
+  await db.insert(penaltyConfig).values({
+    penaltyRatePercent: '2.0',
+    penaltyFrequency: 'MONTHLY',
+    applicationMethod: 'PENALTIES_FIRST',
+    gracePeriodDays: 0,
+  })
+  console.log('  Penalty config seeded')
+
+  // ── 17. Penalty Ledger ────────────────────────────────────────────────────
+
+  console.log('Seeding penalty ledger entries...')
+  const overdueInvs = await db.select().from(invoices)
+    .where(sql`${invoices.status} IN ('OVERDUE', 'PARTIAL') AND ${invoices.dueDate} < CURRENT_DATE`)
+
+  const penaltyRate = 2.0
+  let penaltyCount = 0
+  for (const inv of overdueInvs) {
+    const dueDate = new Date(inv.dueDate)
+    const now = new Date('2026-03-19')
+    const monthsOverdue = Math.max(1, Math.ceil((now.getTime() - dueDate.getTime()) / (30 * 24 * 60 * 60 * 1000)))
+    const principal = Number(inv.amount)
+    let totalPen = 0
+
+    for (let m = 1; m <= monthsOverdue; m++) {
+      const penAmt = Math.round(principal * (penaltyRate / 100) * 100) / 100
+      const accrualDate = addMonths(dueDate, m)
+      await db.insert(penaltyLedger).values({
+        invoiceId: inv.invoiceId,
+        periodLabel: `Month ${m}`,
+        penaltyAmount: String(penAmt),
+        penaltyRate: String(penaltyRate),
+        accrualDate: fmtDate(accrualDate),
+        status: 'ACTIVE',
+        paidAmount: '0',
+      })
+      totalPen += penAmt
+      penaltyCount++
+    }
+
+    // Update denormalized totals
+    await db.update(invoices)
+      .set({ totalPenalties: String(totalPen), penaltiesPaid: '0' })
+      .where(eq(invoices.invoiceId, inv.invoiceId))
+  }
+  console.log(`  ${penaltyCount} penalty ledger entries seeded`)
+
+  // ── 18. Payment Allocations ───────────────────────────────────────────────
+
+  console.log('Seeding payment allocations...')
+  const confirmedPayments = await db.select().from(incomingPayments)
+    .where(eq(incomingPayments.status, 'CONFIRMED'))
+
+  let allocCount = 0
+  for (const pay of confirmedPayments) {
+    if (pay.invoiceId) {
+      await db.insert(paymentAllocations).values({
+        paymentId: pay.paymentId,
+        invoiceId: pay.invoiceId,
+        allocationType: 'PRINCIPAL',
+        amount: pay.amount,
+      })
+      allocCount++
+    }
+  }
+  console.log(`  ${allocCount} payment allocations seeded`)
+
+  // ── 19. AP Workflow Events ────────────────────────────────────────────────
+
+  console.log('Seeding AP workflow events...')
+  const allSupplierInvoices = await db.select({
+    si: supplierInvoices,
+    po: purchaseOrders,
+    sup: suppliers,
+  }).from(supplierInvoices)
+    .innerJoin(purchaseOrders, eq(supplierInvoices.poId, purchaseOrders.poId))
+    .innerJoin(suppliers, eq(supplierInvoices.supplierId, suppliers.supplierId))
+
+  const WORKFLOW_STEPS: { eventType: string; status: string; performer: string }[] = [
+    { eventType: 'CLAIM_SUBMITTED', status: 'SUBMITTED', performer: 'supplier' },
+    { eventType: 'DELIVERY_REPORT_UPLOADED', status: 'SUBMITTED', performer: 'supplier' },
+    { eventType: 'GR_CONFIRMED', status: 'GR_CONFIRMED', performer: 'Warehouse Team' },
+    { eventType: 'THREE_WAY_MATCH', status: 'MATCHED', performer: 'system' },
+    { eventType: 'AP_CLERK_APPROVED', status: 'AP_APPROVED', performer: 'ap.clerk@ayalaland.com' },
+    { eventType: 'FM_APPROVED', status: 'FM_APPROVED', performer: 'finance.mgr@ayalaland.com' },
+    { eventType: 'PAYMENT_SCHEDULED', status: 'PAYMENT_SCHEDULED', performer: 'system' },
+    { eventType: 'PAYMENT_RELEASED', status: 'RELEASED', performer: 'system' },
+  ]
+
+  let eventCount = 0
+  for (let i = 0; i < allSupplierInvoices.length; i++) {
+    const { si, po, sup } = allSupplierInvoices[i]
+
+    // Determine how far along the workflow based on payment status
+    let stepsCompleted: number
+    if (si.paymentStatus === 'PAID') {
+      stepsCompleted = 8 // all steps
+    } else if (si.paymentStatus === 'PARTIAL') {
+      stepsCompleted = 6 // up to FM_APPROVED
+    } else {
+      // UNPAID — distribute across early stages
+      stepsCompleted = pick([2, 3, 4, 5])
+    }
+
+    const finalStatus = WORKFLOW_STEPS[stepsCompleted - 1].status
+    await db.update(supplierInvoices)
+      .set({ workflowStatus: finalStatus })
+      .where(eq(supplierInvoices.supplierInvoiceId, si.supplierInvoiceId))
+
+    // Create events for completed steps
+    const baseDate = new Date(si.submittedDate)
+    for (let s = 0; s < stepsCompleted; s++) {
+      const step = WORKFLOW_STEPS[s]
+      const eventDate = addDays(baseDate, s * 2 + randInt(0, 1))
+      await db.insert(apWorkflowEvents).values({
+        supplierInvoiceId: si.supplierInvoiceId,
+        poId: si.poId,
+        eventType: step.eventType,
+        eventData: { amount: si.amount, supplierName: sup.name, poNumber: po.poNumber },
+        performedBy: step.performer === 'supplier' ? sup.name : step.performer,
+        createdAt: eventDate,
+      })
+      eventCount++
+    }
+  }
+  console.log(`  ${eventCount} AP workflow events seeded`)
 
   // ── Summary ───────────────────────────────────────────────────────────────
 
