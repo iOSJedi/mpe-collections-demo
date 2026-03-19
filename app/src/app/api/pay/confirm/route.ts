@@ -1,27 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
-import { invoices, incomingPayments } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { invoices, incomingPayments, penaltyConfig, penaltyLedger, paymentAllocations } from '@/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { stripe } from '@/lib/stripe'
+import { calculateAllocation } from '@/lib/payment-allocation'
 
-// POST /api/pay/confirm — Confirm a successful Stripe payment and record it
-// Body: { paymentIntentId: string, invoiceId: number, amount: number }
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { paymentIntentId, invoiceId, amount } = body
+    const { paymentIntentId, invoiceId, customerId, amount } = body
 
     if (!paymentIntentId) {
       return NextResponse.json({ error: 'paymentIntentId is required' }, { status: 400 })
-    }
-    if (!invoiceId || typeof invoiceId !== 'number') {
-      return NextResponse.json({ error: 'invoiceId must be a number' }, { status: 400 })
     }
     if (!amount || typeof amount !== 'number' || amount <= 0) {
       return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
     }
 
-    // 1. Verify the PaymentIntent succeeded with Stripe
+    // Verify Stripe payment
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
     if (paymentIntent.status !== 'succeeded') {
       return NextResponse.json(
@@ -30,53 +26,132 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Look up the invoice to get customerId and current balance
-    const invoiceResult = await db
-      .select({
-        invoiceId: invoices.invoiceId,
-        customerId: invoices.customerId,
-        balanceRemaining: invoices.balanceRemaining,
-      })
-      .from(invoices)
-      .where(eq(invoices.invoiceId, invoiceId))
-      .limit(1)
-
-    if (!invoiceResult.length) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    // Determine customerId from invoiceId if not provided
+    let cid = customerId
+    if (!cid && invoiceId) {
+      const invRow = await db.select({ customerId: invoices.customerId }).from(invoices).where(eq(invoices.invoiceId, invoiceId)).limit(1)
+      cid = invRow[0]?.customerId
+    }
+    if (!cid) {
+      return NextResponse.json({ error: 'Could not determine customer' }, { status: 400 })
     }
 
-    const invoice = invoiceResult[0]
-    const currentBalance = Number(invoice.balanceRemaining)
-    const newBalance = Math.max(0, currentBalance - amount)
-    const newStatus = newBalance <= 0 ? 'PAID' : 'PARTIAL'
+    // Load config
+    const configRows = await db.select().from(penaltyConfig).limit(1)
+    const config = configRows[0]
+    const method = (config?.applicationMethod || 'PENALTIES_FIRST') as 'PENALTIES_FIRST' | 'FIFO'
+    const penaltyRate = Number(config?.penaltyRatePercent || 2)
 
-    // 3. Create incoming payment record
-    const [payment] = await db
-      .insert(incomingPayments)
-      .values({
-        invoiceId: invoice.invoiceId,
-        customerId: invoice.customerId,
-        amount: String(amount),
-        paymentMethod: 'CARD',
-        stripePaymentIntentId: paymentIntentId,
-        status: 'CONFIRMED',
-        confirmedAt: new Date(),
-      })
-      .returning()
+    // Load outstanding invoices
+    const invoiceRows = await db.select().from(invoices)
+      .where(sql`${invoices.customerId} = ${cid} AND ${invoices.status} != 'PAID'`)
+      .orderBy(invoices.dueDate)
 
-    // 4. Update invoice balance and status
-    await db
-      .update(invoices)
-      .set({
-        balanceRemaining: String(newBalance),
-        status: newStatus,
+    // Load penalties
+    const invIds = invoiceRows.map(i => i.invoiceId)
+    const penaltyRows = invIds.length > 0
+      ? await db.select().from(penaltyLedger)
+          .where(sql`${penaltyLedger.invoiceId} IN (${sql.join(invIds.map(id => sql`${id}`), sql`, `)}) AND ${penaltyLedger.status} = 'ACTIVE'`)
+      : []
+
+    const penMap = new Map<number, typeof penaltyRows>()
+    for (const p of penaltyRows) {
+      const arr = penMap.get(p.invoiceId) || []
+      arr.push(p)
+      penMap.set(p.invoiceId, arr)
+    }
+
+    const invoicesForCalc = invoiceRows.map(inv => ({
+      invoiceId: inv.invoiceId,
+      invoiceNumber: inv.invoiceNumber,
+      balanceRemaining: Number(inv.balanceRemaining),
+      dueDate: inv.dueDate,
+      penalties: (penMap.get(inv.invoiceId) || []).map(p => ({
+        penaltyId: p.penaltyId,
+        periodLabel: p.periodLabel,
+        amount: Number(p.penaltyAmount),
+        paidAmount: Number(p.paidAmount),
+        status: p.status,
+      })),
+    }))
+
+    const allocation = calculateAllocation(invoicesForCalc, amount, method, penaltyRate)
+
+    // Create payment record (invoiceId null for multi-invoice allocation)
+    const [payment] = await db.insert(incomingPayments).values({
+      invoiceId: invoiceId || null,
+      customerId: cid,
+      amount: String(amount),
+      paymentMethod: 'CARD',
+      stripePaymentIntentId: paymentIntentId,
+      status: 'CONFIRMED',
+      confirmedAt: new Date(),
+    }).returning()
+
+    // Write allocation rows
+    for (const a of allocation.applied) {
+      await db.insert(paymentAllocations).values({
+        paymentId: payment.paymentId,
+        invoiceId: a.invoiceId,
+        penaltyId: a.penaltyId || null,
+        allocationType: a.allocationType,
+        amount: String(a.amount),
       })
-      .where(eq(invoices.invoiceId, invoiceId))
+    }
+
+    // Update penalty ledger entries
+    const penaltyUpdates = new Map<number, number>()
+    for (const a of allocation.applied) {
+      if (a.allocationType === 'PENALTY' && a.penaltyId) {
+        penaltyUpdates.set(a.penaltyId, (penaltyUpdates.get(a.penaltyId) || 0) + a.amount)
+      }
+    }
+    for (const [penId, addedAmount] of penaltyUpdates) {
+      const pen = penaltyRows.find(p => p.penaltyId === penId)
+      if (pen) {
+        const newPaid = Number(pen.paidAmount) + addedAmount
+        const newStatus = newPaid >= Number(pen.penaltyAmount) ? 'PAID' : 'ACTIVE'
+        await db.update(penaltyLedger)
+          .set({ paidAmount: String(newPaid), status: newStatus, updatedAt: new Date() })
+          .where(eq(penaltyLedger.penaltyId, penId))
+      }
+    }
+
+    // Update invoice balances
+    const principalByInvoice = new Map<number, number>()
+    for (const a of allocation.applied) {
+      if (a.allocationType === 'PRINCIPAL') {
+        principalByInvoice.set(a.invoiceId, (principalByInvoice.get(a.invoiceId) || 0) + a.amount)
+      }
+    }
+    const penaltiesPaidByInvoice = new Map<number, number>()
+    for (const a of allocation.applied) {
+      if (a.allocationType === 'PENALTY') {
+        penaltiesPaidByInvoice.set(a.invoiceId, (penaltiesPaidByInvoice.get(a.invoiceId) || 0) + a.amount)
+      }
+    }
+
+    for (const inv of invoiceRows) {
+      const principalPaid = principalByInvoice.get(inv.invoiceId) || 0
+      const penPaid = penaltiesPaidByInvoice.get(inv.invoiceId) || 0
+      if (principalPaid > 0 || penPaid > 0) {
+        const newBalance = Math.max(0, Number(inv.balanceRemaining) - principalPaid)
+        const newPenPaid = Number(inv.penaltiesPaid) + penPaid
+        const newStatus = newBalance <= 0 ? 'PAID' : 'PARTIAL'
+        await db.update(invoices)
+          .set({
+            balanceRemaining: String(newBalance),
+            penaltiesPaid: String(newPenPaid),
+            status: newStatus,
+          })
+          .where(eq(invoices.invoiceId, inv.invoiceId))
+      }
+    }
 
     return NextResponse.json({
       success: true,
       paymentId: payment.paymentId,
-      newBalance,
+      allocation: allocation,
     })
   } catch (error) {
     console.error('Failed to confirm payment:', error)
