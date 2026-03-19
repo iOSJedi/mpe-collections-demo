@@ -76,6 +76,8 @@ export const GET = withAuth(async (request: NextRequest) => {
         document_id: documents.documentId,
         customer_name: customers.name,
         invoice_number: invoices.invoiceNumber,
+        payment_id: documents.paymentId,
+        file_url: documents.fileUrl,
         file_name: documents.fileName,
         file_type: documents.fileType,
         ocr_status: documents.ocrStatus,

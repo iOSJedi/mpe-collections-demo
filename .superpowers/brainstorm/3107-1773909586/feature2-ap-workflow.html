@@ -1,0 +1,232 @@
+<h2>Feature 2: AP Supplier Payment Workflow</h2>
+<p class="subtitle">Supplier emulator panel, Ayala Land approval queue, and timeline UI</p>
+
+<!-- PART A: EMULATOR -->
+<div class="section">
+  <h3>A. Emulator Panel — Supplier Mode</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">The existing emulator sidebar gets a mode switcher. In "Supplier" mode, you can simulate a supplier filing claims and uploading delivery reports.</p>
+
+  <div class="mockup" style="max-width: 380px;">
+    <div class="mockup-header">Emulator Panel (Sidebar)</div>
+    <div class="mockup-body" style="padding: 0;">
+
+      <!-- Mode switcher -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #333;">
+        <div style="padding: 10px; text-align: center; font-size: 12px; color: #888; cursor: pointer; border-bottom: 2px solid transparent;">Payer</div>
+        <div style="padding: 10px; text-align: center; font-size: 12px; color: #7c8aff; cursor: pointer; border-bottom: 2px solid #7c8aff; font-weight: 600;">Supplier</div>
+      </div>
+
+      <div style="padding: 16px;">
+        <!-- Supplier selector -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Acting as supplier:</div>
+          <div style="background: #1c1c2e; border: 1px solid #444; border-radius: 6px; padding: 8px 12px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Megawide Construction Corp.</span>
+            <span style="color: #888; font-size: 10px;">▼</span>
+          </div>
+        </div>
+
+        <!-- PO selector -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Purchase Order:</div>
+          <div style="background: #1c1c2e; border: 1px solid #444; border-radius: 6px; padding: 8px 12px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span>PO-2026-0042 — ₱1,250,000</span>
+            <span style="color: #888; font-size: 10px;">▼</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Supplier Actions:</div>
+
+        <div style="background: #1c1c2e; border: 1px solid #333; border-radius: 8px; overflow: hidden; margin-bottom: 8px;">
+          <div style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-bottom: 1px solid #2a2a3e;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #7c8aff22; display: flex; align-items: center; justify-content: center; font-size: 14px;">📄</div>
+            <div>
+              <div style="font-size: 12px; font-weight: 500;">Submit Claim / Invoice</div>
+              <div style="font-size: 10px; color: #888;">File a claim for goods delivered</div>
+            </div>
+          </div>
+          <div style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-bottom: 1px solid #2a2a3e;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #4ade8022; display: flex; align-items: center; justify-content: center; font-size: 14px;">📦</div>
+            <div>
+              <div style="font-size: 12px; font-weight: 500;">Upload Delivery Report</div>
+              <div style="font-size: 10px; color: #888;">Attach proof of delivery / GR</div>
+            </div>
+          </div>
+          <div style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #f59e0b22; display: flex; align-items: center; justify-content: center; font-size: 14px;">📊</div>
+            <div>
+              <div style="font-size: 12px; font-weight: 500;">Check Payment Status</div>
+              <div style="font-size: 10px; color: #888;">View where your claim is in the process</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent activity -->
+        <div style="font-size: 11px; color: #888; margin-bottom: 6px; margin-top: 16px;">Recent Submissions:</div>
+        <div style="font-size: 11px; background: #1c1c2e; border-radius: 6px; padding: 8px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span style="color: #ccc;">INV-SUP-0042-01</span>
+            <span style="color: #f59e0b; font-size: 10px;">AP REVIEW</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #ccc;">INV-SUP-0038-01</span>
+            <span style="color: #4ade80; font-size: 10px;">RELEASED</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PART B: APPROVAL QUEUE -->
+<div class="section" style="margin-top: 32px;">
+  <h3>B. Ayala Land View — AP Approval Queue</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">New view under /payable showing supplier claims awaiting action, with role-based actions (AP Clerk vs Finance Manager).</p>
+
+  <div class="mockup">
+    <div class="mockup-header">Payables → Approval Queue</div>
+    <div class="mockup-body" style="padding: 16px;">
+
+      <!-- Tab bar -->
+      <div style="display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid #333;">
+        <div style="padding: 8px 16px; font-size: 12px; color: #7c8aff; border-bottom: 2px solid #7c8aff; font-weight: 600;">Pending My Review (3)</div>
+        <div style="padding: 8px 16px; font-size: 12px; color: #888;">All Claims</div>
+        <div style="padding: 8px 16px; font-size: 12px; color: #888;">Released</div>
+      </div>
+
+      <!-- Claim row 1 -->
+      <div style="background: #1c1c2e; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div>
+            <span style="font-weight: 600; font-size: 13px;">INV-SUP-0042-01</span>
+            <span style="color: #888; font-size: 12px; margin-left: 8px;">Megawide Construction</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-weight: 600;">₱1,250,000.00</span>
+            <span style="color: #f59e0b; font-size: 11px; background: #f59e0b22; padding: 2px 8px; border-radius: 4px;">PENDING AP REVIEW</span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 10px;">
+          <div><span style="color: #888;">PO:</span> <span style="color: #ccc;">PO-2026-0042</span></div>
+          <div><span style="color: #888;">GR:</span> <span style="color: #4ade80;">Verified</span></div>
+          <div><span style="color: #888;">3-Way Match:</span> <span style="color: #4ade80;">Passed</span></div>
+          <div><span style="color: #888;">Submitted:</span> <span style="color: #ccc;">Mar 15, 2026</span></div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="background: #4ade80; color: #000; padding: 6px 16px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Approve</div>
+          <div style="background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; padding: 6px 16px; border-radius: 4px; font-size: 11px; cursor: pointer;">Reject</div>
+          <div style="background: transparent; border: 1px solid #555; color: #aaa; padding: 6px 16px; border-radius: 4px; font-size: 11px; cursor: pointer;">View Documents</div>
+          <div style="background: transparent; border: 1px solid #555; color: #aaa; padding: 6px 16px; border-radius: 4px; font-size: 11px; cursor: pointer;">View Timeline</div>
+        </div>
+      </div>
+
+      <!-- Claim row 2 -->
+      <div style="background: #1c1c2e; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div>
+            <span style="font-weight: 600; font-size: 13px;">INV-SUP-0039-02</span>
+            <span style="color: #888; font-size: 12px; margin-left: 8px;">AllDay Mart Supplies</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-weight: 600;">₱345,000.00</span>
+            <span style="color: #7c8aff; font-size: 11px; background: #7c8aff22; padding: 2px 8px; border-radius: 4px;">PENDING FM APPROVAL</span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 10px;">
+          <div><span style="color: #888;">PO:</span> <span style="color: #ccc;">PO-2026-0039</span></div>
+          <div><span style="color: #888;">GR:</span> <span style="color: #4ade80;">Verified</span></div>
+          <div><span style="color: #888;">3-Way Match:</span> <span style="color: #4ade80;">Passed</span></div>
+          <div><span style="color: #888;">AP Approved:</span> <span style="color: #ccc;">Mar 12, 2026</span></div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="background: #4ade80; color: #000; padding: 6px 16px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Authorize Payment</div>
+          <div style="background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; padding: 6px 16px; border-radius: 4px; font-size: 11px; cursor: pointer;">Return to AP</div>
+          <div style="background: transparent; border: 1px solid #555; color: #aaa; padding: 6px 16px; border-radius: 4px; font-size: 11px; cursor: pointer;">View Timeline</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- PART C: TIMELINE -->
+<div class="section" style="margin-top: 32px;">
+  <h3>C. Payment Lifecycle Timeline</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">Shown when clicking "View Timeline" on any payable. Each event from ap_workflow_events_col renders as a step. Visible to both Ayala Land users and suppliers (via emulator "Check Payment Status").</p>
+
+  <div class="mockup" style="max-width: 600px;">
+    <div class="mockup-header">PO-2026-0042 — Megawide Construction · ₱1,250,000</div>
+    <div class="mockup-body" style="padding: 20px;">
+
+      <!-- Timeline -->
+      <div style="position: relative; padding-left: 32px;">
+
+        <!-- Vertical line -->
+        <div style="position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px; background: linear-gradient(to bottom, #4ade80 0%, #4ade80 55%, #f59e0b 55%, #f59e0b 72%, #555 72%, #555 100%);"></div>
+
+        <!-- Event 1: Completed -->
+        <div style="position: relative; margin-bottom: 20px;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #4ade80; border: 2px solid #1a1a2e;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #ccc;">Claim Submitted</div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">Megawide Construction filed invoice INV-SUP-0042-01 for ₱1,250,000</div>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">Mar 10, 2026 · 9:15 AM · by supplier</div>
+        </div>
+
+        <!-- Event 2: Completed -->
+        <div style="position: relative; margin-bottom: 20px;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #4ade80; border: 2px solid #1a1a2e;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #ccc;">Delivery Report Uploaded</div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">Proof of delivery attached (delivery-report-0042.pdf)</div>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">Mar 11, 2026 · 2:30 PM · by supplier</div>
+        </div>
+
+        <!-- Event 3: Completed -->
+        <div style="position: relative; margin-bottom: 20px;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #4ade80; border: 2px solid #1a1a2e;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #ccc;">Goods Receipt Confirmed</div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">GR-2026-0042 verified — quantities match PO</div>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">Mar 12, 2026 · 10:00 AM · by Warehouse Team</div>
+        </div>
+
+        <!-- Event 4: Completed -->
+        <div style="position: relative; margin-bottom: 20px;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #4ade80; border: 2px solid #1a1a2e;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #ccc;">3-Way Match Verified</div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">PO ↔ GR ↔ Invoice — all amounts and quantities match</div>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">Mar 13, 2026 · 11:20 AM · system</div>
+        </div>
+
+        <!-- Event 5: Current step -->
+        <div style="position: relative; margin-bottom: 20px;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #f59e0b; border: 2px solid #1a1a2e; box-shadow: 0 0 8px #f59e0b66;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #f59e0b;">AP Clerk Review</div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">Awaiting AP Clerk verification of documents and matching</div>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">Waiting since Mar 15, 2026</div>
+        </div>
+
+        <!-- Event 6: Future -->
+        <div style="position: relative; margin-bottom: 20px;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #333; border: 2px solid #555;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #555;">Finance Manager Approval</div>
+          <div style="font-size: 11px; color: #444; margin-top: 2px;">Pending AP Clerk approval</div>
+        </div>
+
+        <!-- Event 7: Future -->
+        <div style="position: relative; margin-bottom: 20px;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #333; border: 2px solid #555;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #555;">Payment Scheduled</div>
+          <div style="font-size: 11px; color: #444; margin-top: 2px;">Pending FM authorization</div>
+        </div>
+
+        <!-- Event 8: Future -->
+        <div style="position: relative; margin-bottom: 0;">
+          <div style="position: absolute; left: -27px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #333; border: 2px solid #555;"></div>
+          <div style="font-size: 12px; font-weight: 600; color: #555;">Payment Released</div>
+          <div style="font-size: 11px; color: #444; margin-top: 2px;">Final step — funds transferred to supplier</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

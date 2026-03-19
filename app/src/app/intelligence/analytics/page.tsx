@@ -24,12 +24,12 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 
-interface CashFlowPoint {
-  forecast_date: string
-  predicted_inflow: number
-  predicted_outflow: number
-  confidence_lower?: number
-  confidence_upper?: number
+interface CashFlowChartPoint {
+  date: string
+  actual_inflow?: number
+  actual_outflow?: number
+  predicted_inflow?: number
+  predicted_outflow?: number
 }
 
 interface CollectionPoint {
@@ -81,7 +81,7 @@ function EmptyChart({ message }: { message: string }) {
 }
 
 function AnalyticsContent() {
-  const [cashFlow, setCashFlow] = useState<CashFlowPoint[]>([])
+  const [cashFlow, setCashFlow] = useState<CashFlowChartPoint[]>([])
   const [collections, setCollections] = useState<CollectionPoint[]>([])
   const [creditRisk, setCreditRisk] = useState<CreditRiskPoint[]>([])
   const [loading, setLoading] = useState(true)
@@ -101,7 +101,23 @@ function AnalyticsContent() {
 
       if (cashFlowRes.ok) {
         const data = await cashFlowRes.json()
-        setCashFlow(data.forecasts ?? [])
+        const actuals: CashFlowChartPoint[] = (data.actuals ?? []).map((a: { date: string; actual_inflow: number; actual_outflow: number }) => ({
+          date: a.date,
+          actual_inflow: a.actual_inflow,
+          actual_outflow: a.actual_outflow,
+        }))
+        const forecasts: CashFlowChartPoint[] = (data.forecasts ?? []).map((f: { date: string; predicted_inflow: number; predicted_outflow: number }) => ({
+          date: f.date,
+          predicted_inflow: f.predicted_inflow,
+          predicted_outflow: f.predicted_outflow,
+        }))
+        // Bridge: add predicted values to last actual point so lines connect
+        if (actuals.length > 0 && forecasts.length > 0) {
+          const last = actuals[actuals.length - 1]
+          last.predicted_inflow = last.actual_inflow
+          last.predicted_outflow = last.actual_outflow
+        }
+        setCashFlow([...actuals, ...forecasts])
       }
 
       if (collectionsRes.ok) {
@@ -179,7 +195,7 @@ function AnalyticsContent() {
     )
   }
 
-  const isEmpty = cashFlow.length < 2 && collections.length === 0 && creditRisk.length === 0
+  const isEmpty = cashFlow.length === 0 && collections.length === 0 && creditRisk.length === 0
 
   return (
     <div className="space-y-6">
@@ -224,20 +240,20 @@ function AnalyticsContent() {
       {/* Cash Flow Forecast */}
       <SectionCard
         title="Cash Flow Forecast"
-        subtitle="Predicted inflow vs outflow over the forecast period (PHP)"
+        subtitle="Actual vs predicted inflow and outflow (PHP)"
       >
         {cashFlow.length < 2 ? (
-          <EmptyChart message="No cash flow forecast data available. Run the ML pipeline to generate forecasts." />
+          <EmptyChart message="No cash flow data available. Run the ML pipeline to generate forecasts." />
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={cashFlow} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
-                dataKey="forecast_date"
+                dataKey="date"
                 tick={{ fontSize: 11 }}
                 tickFormatter={(v) => {
                   const d = new Date(v)
-                  return `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`
+                  return d.toLocaleString('default', { month: 'short', year: '2-digit' })
                 }}
               />
               <YAxis
@@ -247,26 +263,55 @@ function AnalyticsContent() {
               />
               <Tooltip
                 formatter={(value: number | undefined) => formatPHP(value ?? 0)}
-                labelFormatter={(label) => `Date: ${label}`}
+                labelFormatter={(label) => {
+                  const d = new Date(label)
+                  return d.toLocaleString('default', { month: 'long', year: 'numeric' })
+                }}
               />
               <Legend />
+              {/* Actual lines — solid */}
+              <Line
+                type="monotone"
+                dataKey="actual_inflow"
+                name="Actual Inflow"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: '#10b981' }}
+                activeDot={{ r: 5 }}
+                connectNulls={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="actual_outflow"
+                name="Actual Outflow"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: '#ef4444' }}
+                activeDot={{ r: 5 }}
+                connectNulls={false}
+              />
+              {/* Forecast lines — dashed */}
               <Line
                 type="monotone"
                 dataKey="predicted_inflow"
-                name="Predicted Inflow"
+                name="Forecast Inflow"
                 stroke="#10b981"
                 strokeWidth={2}
+                strokeDasharray="6 3"
                 dot={false}
                 activeDot={{ r: 4 }}
+                connectNulls={false}
               />
               <Line
                 type="monotone"
                 dataKey="predicted_outflow"
-                name="Predicted Outflow"
+                name="Forecast Outflow"
                 stroke="#ef4444"
                 strokeWidth={2}
+                strokeDasharray="6 3"
                 dot={false}
                 activeDot={{ r: 4 }}
+                connectNulls={false}
               />
             </LineChart>
           </ResponsiveContainer>

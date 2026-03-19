@@ -178,6 +178,8 @@ export interface DocumentRecord {
   document_id: number
   customer_name: string
   invoice_number: string | null
+  payment_id: number | null
+  file_url: string
   file_name: string
   file_type: string
   ocr_status: string

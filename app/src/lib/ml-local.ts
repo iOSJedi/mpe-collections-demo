@@ -333,8 +333,8 @@ async function runCashFlowForecast(): Promise<string> {
   }>(sql`
     WITH months AS (
       SELECT generate_series(
-        date_trunc('month', CURRENT_DATE - interval '5 months'),
-        date_trunc('month', CURRENT_DATE),
+        date_trunc('month', CURRENT_DATE - interval '6 months'),
+        date_trunc('month', CURRENT_DATE - interval '1 month'),
         '1 month'
       )::date AS month
     ),
@@ -364,10 +364,37 @@ async function runCashFlowForecast(): Promise<string> {
     ORDER BY m.month
   `)
 
-  const avgInflow =
-    history.reduce((s, r) => s + Number(r.total_inflow), 0) / Math.max(history.length, 1)
-  const avgOutflow =
-    history.reduce((s, r) => s + Number(r.total_outflow), 0) / Math.max(history.length, 1)
+  // Compute linear trend via least-squares regression
+  const n = history.length
+  const inflowVals = history.map((r) => Number(r.total_inflow))
+  const outflowVals = history.map((r) => Number(r.total_outflow))
+
+  function linReg(vals: number[]) {
+    const len = vals.length
+    if (len < 2) return { intercept: vals[0] ?? 0, slope: 0, avg: vals[0] ?? 0 }
+    const avg = vals.reduce((a, b) => a + b, 0) / len
+    const xMean = (len - 1) / 2
+    let num = 0, den = 0
+    for (let i = 0; i < len; i++) {
+      num += (i - xMean) * (vals[i] - avg)
+      den += (i - xMean) ** 2
+    }
+    const slope = den === 0 ? 0 : num / den
+    const intercept = avg - slope * xMean
+    return { intercept, slope, avg }
+  }
+
+  const inflowReg = linReg(inflowVals)
+  const outflowReg = linReg(outflowVals)
+
+  // Seasonal multipliers (month-of-year effects for property management)
+  // Q1 tends to be lower (post-holiday), Q4 slightly higher
+  const seasonalFactors: Record<number, number> = {
+    1: 0.93, 2: 0.95, 3: 0.98,
+    4: 1.00, 5: 1.02, 6: 1.01,
+    7: 0.99, 8: 1.00, 9: 1.03,
+    10: 1.04, 11: 1.05, 12: 1.02,
+  }
 
   // Project 6 months forward
   await db.delete(cashFlowForecasts)
@@ -376,12 +403,23 @@ async function runCashFlowForecast(): Promise<string> {
     const d = new Date()
     d.setMonth(d.getMonth() + i + 1, 1)
     const dateStr = d.toISOString().slice(0, 10)
+    const monthNum = d.getMonth() + 1 // 1-12
+    const seasonal = seasonalFactors[monthNum] ?? 1.0
+
+    // Extrapolate trend from end of historical data
+    const trendIdx = n + i
+    const rawInflow = Math.max(0, (inflowReg.intercept + inflowReg.slope * trendIdx) * seasonal)
+    const rawOutflow = Math.max(0, (outflowReg.intercept + outflowReg.slope * trendIdx) * seasonal)
+
+    // Confidence widens over time
+    const uncertainty = 0.05 + i * 0.03
+
     return {
       forecastDate: dateStr,
-      predictedInflow: String(Math.round(avgInflow)),
-      predictedOutflow: String(Math.round(avgOutflow)),
-      confidenceLower: String(Math.round(avgInflow * 0.8)),
-      confidenceUpper: String(Math.round(avgInflow * 1.2)),
+      predictedInflow: String(Math.round(rawInflow)),
+      predictedOutflow: String(Math.round(rawOutflow)),
+      confidenceLower: String(Math.round(rawInflow * (1 - uncertainty))),
+      confidenceUpper: String(Math.round(rawInflow * (1 + uncertainty))),
       basedOnPeriod: '6 months',
     }
   })
@@ -390,7 +428,7 @@ async function runCashFlowForecast(): Promise<string> {
     await db.insert(cashFlowForecasts).values(forecasts)
   }
 
-  return `Generated 6-month cash flow forecast (avg inflow: ${Math.round(avgInflow)}, avg outflow: ${Math.round(avgOutflow)})`
+  return `Generated 6-month cash flow forecast (avg inflow: ${Math.round(inflowReg.avg)}, avg outflow: ${Math.round(outflowReg.avg)})`
 }
 
 // ────────────────────────────────────────────────────────────

@@ -1,0 +1,362 @@
+<h2>Feature 1: Penalty & Payment Breakdown</h2>
+<p class="subtitle">Three UI surfaces — Admin view, Payer portal, and Settings</p>
+
+<!-- PART A: ADMIN VIEW -->
+<div class="section">
+  <h3>A. Admin View — Customer Detail Page (enhanced)</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">Replaces the current flat invoices table on /receivable/[id] with a breakdown that shows penalties and payment allocations per invoice.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">Customer Detail — Maria Santos (Greenbelt Unit 4B)</div>
+    <div class="mockup-body" style="padding: 0;">
+
+      <!-- Invoice Breakdown Table -->
+      <div style="padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="font-weight: 600; font-size: 14px;">Outstanding Balance Breakdown</div>
+          <div style="font-size: 12px; color: #888;">Total Due: <span style="color: #ff6b6b; font-weight: 600;">₱168,400.00</span></div>
+        </div>
+
+        <!-- Invoice Row 1 - Oldest -->
+        <div style="background: #1c1c2e; border: 1px solid #ff6b6b44; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <span style="color: #ff6b6b; font-size: 11px; font-weight: 600; background: #ff6b6b22; padding: 2px 8px; border-radius: 4px;">90+ DAYS OVERDUE</span>
+              <span style="font-weight: 600; margin-left: 8px; font-size: 13px;">INV-2025-1201</span>
+              <span style="color: #888; font-size: 12px; margin-left: 8px;">Dec 2025</span>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: #888;">Due: Dec 15, 2025</div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; font-size: 12px;">
+            <div>
+              <div style="color: #888; font-size: 10px;">Principal</div>
+              <div style="color: #ccc; font-weight: 500;">₱50,000.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Penalty (3 months × 2%)</div>
+              <div style="color: #ff6b6b; font-weight: 500;">₱3,000.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Paid</div>
+              <div style="color: #4ade80; font-weight: 500;">₱0.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Balance</div>
+              <div style="color: #fff; font-weight: 600;">₱53,000.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Row 2 -->
+        <div style="background: #1c1c2e; border: 1px solid #f59e0b44; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <span style="color: #f59e0b; font-size: 11px; font-weight: 600; background: #f59e0b22; padding: 2px 8px; border-radius: 4px;">60 DAYS OVERDUE</span>
+              <span style="font-weight: 600; margin-left: 8px; font-size: 13px;">INV-2026-0101</span>
+              <span style="color: #888; font-size: 12px; margin-left: 8px;">Jan 2026</span>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: #888;">Due: Jan 15, 2026</div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; font-size: 12px;">
+            <div>
+              <div style="color: #888; font-size: 10px;">Principal</div>
+              <div style="color: #ccc; font-weight: 500;">₱50,000.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Penalty (2 months × 2%)</div>
+              <div style="color: #f59e0b; font-weight: 500;">₱2,000.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Paid</div>
+              <div style="color: #4ade80; font-weight: 500;">₱0.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Balance</div>
+              <div style="color: #fff; font-weight: 600;">₱52,000.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Row 3 -->
+        <div style="background: #1c1c2e; border: 1px solid #f59e0b44; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <span style="color: #f59e0b; font-size: 11px; font-weight: 600; background: #f59e0b22; padding: 2px 8px; border-radius: 4px;">30 DAYS OVERDUE</span>
+              <span style="font-weight: 600; margin-left: 8px; font-size: 13px;">INV-2026-0201</span>
+              <span style="color: #888; font-size: 12px; margin-left: 8px;">Feb 2026</span>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: #888;">Due: Feb 15, 2026</div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; font-size: 12px;">
+            <div>
+              <div style="color: #888; font-size: 10px;">Principal</div>
+              <div style="color: #ccc; font-weight: 500;">₱50,000.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Penalty (1 month × 2%)</div>
+              <div style="color: #f59e0b; font-weight: 500;">₱1,000.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Paid</div>
+              <div style="color: #4ade80; font-weight: 500;">₱0.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Balance</div>
+              <div style="color: #fff; font-weight: 600;">₱51,000.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current month - not overdue -->
+        <div style="background: #1c1c2e; border: 1px solid #33333366; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <span style="color: #60a5fa; font-size: 11px; font-weight: 600; background: #60a5fa22; padding: 2px 8px; border-radius: 4px;">PENDING</span>
+              <span style="font-weight: 600; margin-left: 8px; font-size: 13px;">INV-2026-0301</span>
+              <span style="color: #888; font-size: 12px; margin-left: 8px;">Mar 2026</span>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: #888;">Due: Mar 25, 2026</div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; font-size: 12px;">
+            <div>
+              <div style="color: #888; font-size: 10px;">Principal</div>
+              <div style="color: #ccc; font-weight: 500;">₱50,000.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Penalty</div>
+              <div style="color: #666; font-weight: 500;">—</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Paid</div>
+              <div style="color: #666; font-weight: 500;">₱0.00</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 10px;">Balance</div>
+              <div style="color: #fff; font-weight: 600;">₱50,000.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary bar -->
+        <div style="background: #12121e; border: 1px solid #444; border-radius: 8px; padding: 12px; margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; font-size: 12px;">
+          <div>
+            <div style="color: #888; font-size: 10px;">Total Principal</div>
+            <div style="color: #fff; font-weight: 600;">₱200,000.00</div>
+          </div>
+          <div>
+            <div style="color: #888; font-size: 10px;">Total Penalties</div>
+            <div style="color: #ff6b6b; font-weight: 600;">₱6,000.00</div>
+          </div>
+          <div>
+            <div style="color: #888; font-size: 10px;">Total Paid</div>
+            <div style="color: #4ade80; font-weight: 600;">₱0.00</div>
+          </div>
+          <div>
+            <div style="color: #888; font-size: 10px;">Grand Total Due</div>
+            <div style="color: #fff; font-weight: 700; font-size: 14px;">₱206,000.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment History with Allocations -->
+      <div style="padding: 16px; border-top: 1px solid #333;">
+        <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">Payment History (with allocation detail)</div>
+        <div style="background: #1c1c2e; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <span style="font-weight: 600; font-size: 13px;">PAY-2026-0310</span>
+              <span style="color: #888; font-size: 12px; margin-left: 8px;">Mar 10, 2026 · GCash</span>
+              <span style="color: #4ade80; font-size: 11px; margin-left: 8px; background: #4ade8022; padding: 2px 6px; border-radius: 4px;">CONFIRMED</span>
+            </div>
+            <div style="font-weight: 600;">₱53,000.00</div>
+          </div>
+          <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Allocation (Landlord-first):</div>
+          <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; font-size: 12px; padding-left: 8px; border-left: 2px solid #7c8aff44;">
+            <div style="color: #ff6b6b;">PENALTY</div><div style="color: #888;">INV-2025-1201 · Dec penalty (3mo)</div><div>₱3,000.00</div>
+            <div style="color: #60a5fa;">PRINCIPAL</div><div style="color: #888;">INV-2025-1201 · Dec principal</div><div>₱50,000.00</div>
+          </div>
+          <div style="font-size: 11px; color: #4ade80; margin-top: 6px; padding-left: 8px;">→ INV-2025-1201 fully settled</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- PART B: PAYER PORTAL -->
+<div class="section" style="margin-top: 32px;">
+  <h3>B. Payer Portal — Payment Page (enhanced /pay)</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">What the payer sees after scanning QR code. Shows breakdown of what they owe, and a dynamic calculator when they choose partial payment.</p>
+
+  <div class="split">
+    <!-- Left: Full breakdown -->
+    <div class="mockup">
+      <div class="mockup-header">Step 1: Outstanding Balance</div>
+      <div class="mockup-body" style="padding: 16px;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #888;">Ayala Land Corporation</div>
+          <div style="font-weight: 600; font-size: 16px; margin-top: 4px;">Your Account Summary</div>
+          <div style="font-size: 12px; color: #888; margin-top: 2px;">Maria Santos · Greenbelt Unit 4B</div>
+        </div>
+
+        <div style="background: #1c1c2e; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+            <span style="color: #ff6b6b;">Dec 2025 — 90+ days overdue</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Rent</span><span>₱50,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Late penalty (3mo × 2%)</span><span style="color: #ff6b6b;">₱3,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">
+            <span style="font-weight: 600;">Subtotal</span><span style="font-weight: 600;">₱53,000.00</span>
+          </div>
+        </div>
+
+        <div style="background: #1c1c2e; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+            <span style="color: #f59e0b;">Jan 2026 — 60 days overdue</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Rent</span><span>₱50,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Late penalty (2mo × 2%)</span><span style="color: #f59e0b;">₱2,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">
+            <span style="font-weight: 600;">Subtotal</span><span style="font-weight: 600;">₱52,000.00</span>
+          </div>
+        </div>
+
+        <div style="background: #1c1c2e; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+            <span style="color: #f59e0b;">Feb 2026 — 30 days overdue</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Rent</span><span>₱50,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Late penalty (1mo × 2%)</span><span style="color: #f59e0b;">₱1,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">
+            <span style="font-weight: 600;">Subtotal</span><span style="font-weight: 600;">₱51,000.00</span>
+          </div>
+        </div>
+
+        <div style="background: #12121e; border: 1px solid #7c8aff44; border-radius: 8px; padding: 12px; text-align: center;">
+          <div style="font-size: 11px; color: #888;">Total Amount Due</div>
+          <div style="font-size: 22px; font-weight: 700; color: #fff;">₱156,000.00</div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">Principal: ₱150,000 + Penalties: ₱6,000</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+          <div style="background: #7c8aff; color: #fff; padding: 10px; border-radius: 6px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer;">Pay Full Amount</div>
+          <div style="background: transparent; border: 1px solid #555; color: #ccc; padding: 10px; border-radius: 6px; text-align: center; font-size: 13px; cursor: pointer;">Partial Payment</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Partial payment calculator -->
+    <div class="mockup">
+      <div class="mockup-header">Step 2: Partial Payment Calculator</div>
+      <div class="mockup-body" style="padding: 16px;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #888;">Enter payment amount</div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 8px;">
+            <span style="color: #888; font-size: 18px;">₱</span>
+            <div style="background: #1c1c2e; border: 1px solid #7c8aff; border-radius: 6px; padding: 8px 16px; font-size: 22px; font-weight: 700; min-width: 160px; text-align: center;">55,000.00</div>
+          </div>
+          <div style="font-size: 11px; color: #888; margin-top: 4px;">of ₱156,000.00 total due</div>
+        </div>
+
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #7c8aff;">How your payment will be applied:</div>
+
+        <div style="background: #1c1c2e; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 3px solid #4ade80;">
+          <div style="font-size: 11px; color: #4ade80; margin-bottom: 4px;">✓ WILL BE PAID</div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Dec penalty (3mo)</span><span>₱3,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Jan penalty (2mo)</span><span>₱2,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Feb penalty (1mo)</span><span>₱1,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Dec principal (partial)</span><span>₱49,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">
+            <span style="font-weight: 600;">Applied</span><span style="font-weight: 600; color: #4ade80;">₱55,000.00</span>
+          </div>
+        </div>
+
+        <div style="background: #1c1c2e; border-radius: 8px; padding: 12px; margin-bottom: 12px; border-left: 3px solid #ff6b6b;">
+          <div style="font-size: 11px; color: #ff6b6b; margin-bottom: 4px;">⚠ STILL OUTSTANDING</div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Dec principal (remaining)</span><span>₱1,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Jan principal</span><span>₱50,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: #888;">Feb principal</span><span>₱50,000.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">
+            <span style="font-weight: 600;">Remaining balance</span><span style="font-weight: 600; color: #ff6b6b;">₱101,000.00</span>
+          </div>
+        </div>
+
+        <div style="background: #2a1a1a; border: 1px solid #ff6b6b44; border-radius: 8px; padding: 10px; font-size: 11px; color: #ff9999; margin-bottom: 12px;">
+          ⚠ Remaining balance of ₱101,000.00 will continue to accrue penalties at 2%/month (≈₱2,020/month).
+        </div>
+
+        <div style="background: #7c8aff; color: #fff; padding: 12px; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 600; cursor: pointer;">
+          Pay ₱55,000.00
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PART C: SETTINGS -->
+<div class="section" style="margin-top: 32px;">
+  <h3>C. Settings — Penalty Configuration</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">Added to the existing settings panel in the sidebar.</p>
+
+  <div class="mockup" style="max-width: 400px;">
+    <div class="mockup-header">Settings → Penalty Configuration</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 12px; color: #888; margin-bottom: 4px;">Penalty Rate (% per month)</div>
+        <input class="mock-input" value="2.0" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 12px; color: #888; margin-bottom: 4px;">Grace Period (days after due date)</div>
+        <input class="mock-input" value="0" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 12px; color: #888; margin-bottom: 4px;">Payment Application Method</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="background: #7c8aff33; border: 1px solid #7c8aff; border-radius: 6px; padding: 10px; text-align: center; cursor: pointer;">
+            <div style="font-size: 12px; font-weight: 600; color: #7c8aff;">Penalties First</div>
+            <div style="font-size: 10px; color: #888; margin-top: 2px;">Landlord-friendly</div>
+          </div>
+          <div style="background: transparent; border: 1px solid #444; border-radius: 6px; padding: 10px; text-align: center; cursor: pointer;">
+            <div style="font-size: 12px; font-weight: 500; color: #aaa;">FIFO (Oldest First)</div>
+            <div style="font-size: 10px; color: #888; margin-top: 2px;">Payer-friendly</div>
+          </div>
+        </div>
+      </div>
+      <button class="mock-button" style="width: 100%;">Save Penalty Settings</button>
+    </div>
+  </div>
+</div>

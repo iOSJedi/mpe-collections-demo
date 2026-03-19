@@ -1,0 +1,258 @@
+<h2>Feature 3: Document Upload with AI Analysis</h2>
+<p class="subtitle">Side-by-side view of uploaded documents with AI-extracted fields and match indicators</p>
+
+<!-- PART A: DEPOSIT SLIP VIEW -->
+<div class="section">
+  <h3>A. Document Viewer — Deposit Slip Analysis</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">When viewing a payment with an uploaded deposit slip, a side-by-side panel shows the image alongside the AI extraction results. Accessible from the customer detail page or the collections verification screen.</p>
+
+  <div class="mockup">
+    <div class="mockup-header">Document Analysis — PAY-2026-0310 · Maria Santos</div>
+    <div class="mockup-body" style="padding: 0;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; min-height: 400px;">
+
+        <!-- Left: Document image -->
+        <div style="border-right: 1px solid #333; padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 12px; font-weight: 600;">Uploaded Document</div>
+            <div style="font-size: 10px; color: #888;">deposit-slip-0310.jpg · 1.2 MB</div>
+          </div>
+
+          <!-- Simulated deposit slip -->
+          <div style="background: #f5f5e8; border-radius: 4px; padding: 16px; color: #333; font-size: 11px; line-height: 1.6;">
+            <div style="text-align: center; font-weight: 700; font-size: 13px; color: #1a3a6b; margin-bottom: 8px;">BANK OF THE PHILIPPINE ISLANDS</div>
+            <div style="text-align: center; font-size: 10px; color: #666; margin-bottom: 12px;">Makati Main Branch</div>
+            <div style="border: 1px solid #ccc; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #888;">Date:</span>
+                <span style="font-weight: 600; background: #4ade8033; padding: 0 4px; border-radius: 2px;">March 10, 2026</span>
+              </div>
+            </div>
+            <div style="border: 1px solid #ccc; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #888;">Account Name:</span>
+                <span style="font-weight: 600; background: #4ade8033; padding: 0 4px; border-radius: 2px;">Ayala Land Corporation</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                <span style="color: #888;">Account No:</span>
+                <span style="font-weight: 600; background: #4ade8033; padding: 0 4px; border-radius: 2px;">1234-5678-90</span>
+              </div>
+            </div>
+            <div style="border: 1px solid #ccc; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #888;">Depositor:</span>
+                <span style="font-weight: 600; background: #4ade8033; padding: 0 4px; border-radius: 2px;">Maria Santos</span>
+              </div>
+            </div>
+            <div style="border: 1px solid #ccc; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #888;">Amount:</span>
+                <span style="font-weight: 700; font-size: 14px; background: #4ade8033; padding: 0 4px; border-radius: 2px;">PHP 53,000.00</span>
+              </div>
+            </div>
+            <div style="border: 1px solid #ccc; border-radius: 4px; padding: 8px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #888;">Reference No:</span>
+                <span style="font-weight: 600; background: #4ade8033; padding: 0 4px; border-radius: 2px;">BPI-20260310-7842</span>
+              </div>
+            </div>
+            <div style="text-align: center; margin-top: 12px; color: #999; font-size: 9px;">
+              ── Machine Validated ──
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <div style="font-size: 10px; color: #888; background: #1c1c2e; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Zoom</div>
+            <div style="font-size: 10px; color: #888; background: #1c1c2e; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Download Original</div>
+          </div>
+        </div>
+
+        <!-- Right: AI extraction -->
+        <div style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 12px; font-weight: 600;">AI Analysis</div>
+            <div style="font-size: 10px; color: #4ade80; background: #4ade8022; padding: 2px 8px; border-radius: 4px;">Gemini Vision 2.0</div>
+          </div>
+
+          <!-- Overall confidence -->
+          <div style="background: #1a2e1a; border: 1px solid #2a5a2a; border-radius: 8px; padding: 12px; margin-bottom: 16px; text-align: center;">
+            <div style="font-size: 10px; color: #888;">Overall Confidence</div>
+            <div style="font-size: 24px; font-weight: 700; color: #4ade80;">98%</div>
+            <div style="font-size: 10px; color: #4ade80;">All fields match expected values</div>
+          </div>
+
+          <!-- Extracted fields -->
+          <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Extracted Fields</div>
+
+          <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 10px; color: #888;">Amount</div>
+                <div style="font-size: 13px; font-weight: 600;">₱53,000.00</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80;"></div>
+                <span style="font-size: 10px; color: #4ade80;">Match</span>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: #666; margin-top: 2px;">Expected: ₱53,000.00 (INV-2025-1201 principal + penalties)</div>
+          </div>
+
+          <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 10px; color: #888;">Payment Date</div>
+                <div style="font-size: 13px; font-weight: 600;">March 10, 2026</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80;"></div>
+                <span style="font-size: 10px; color: #4ade80;">Match</span>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: #666; margin-top: 2px;">Matches payment record date</div>
+          </div>
+
+          <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 10px; color: #888;">Depositor Name</div>
+                <div style="font-size: 13px; font-weight: 600;">Maria Santos</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80;"></div>
+                <span style="font-size: 10px; color: #4ade80;">Match</span>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: #666; margin-top: 2px;">Matches customer name on account</div>
+          </div>
+
+          <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 10px; color: #888;">Bank</div>
+                <div style="font-size: 13px; font-weight: 600;">BPI — Makati Main</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80;"></div>
+                <span style="font-size: 10px; color: #4ade80;">Match</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 10px; color: #888;">Reference Number</div>
+                <div style="font-size: 13px; font-weight: 600;">BPI-20260310-7842</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #60a5fa;"></div>
+                <span style="font-size: 10px; color: #60a5fa;">New</span>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: #666; margin-top: 2px;">Auto-saved to payment record</div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display: flex; gap: 8px; margin-top: 16px;">
+            <div style="flex: 1; background: #4ade80; color: #000; padding: 10px; border-radius: 6px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer;">Confirm Payment</div>
+            <div style="flex: 1; background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; padding: 10px; border-radius: 6px; text-align: center; font-size: 12px; cursor: pointer;">Flag for Review</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PART B: MISMATCH SCENARIO -->
+<div class="section" style="margin-top: 32px;">
+  <h3>B. Mismatch Detection Example</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">When the AI detects discrepancies, the field indicators change and a warning summary appears.</p>
+
+  <div class="mockup" style="max-width: 400px;">
+    <div class="mockup-header">AI Analysis — Mismatch Detected</div>
+    <div class="mockup-body" style="padding: 16px;">
+
+      <div style="background: #2a1a1a; border: 1px solid #ff6b6b44; border-radius: 8px; padding: 12px; margin-bottom: 16px; text-align: center;">
+        <div style="font-size: 10px; color: #888;">Overall Confidence</div>
+        <div style="font-size: 24px; font-weight: 700; color: #ff6b6b;">62%</div>
+        <div style="font-size: 10px; color: #ff6b6b;">2 fields need review</div>
+      </div>
+
+      <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px; border-left: 3px solid #ff6b6b;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 10px; color: #888;">Amount</div>
+            <div style="font-size: 13px; font-weight: 600;">₱50,000.00</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b;"></div>
+            <span style="font-size: 10px; color: #ff6b6b;">Mismatch</span>
+          </div>
+        </div>
+        <div style="font-size: 10px; color: #ff9999; margin-top: 4px; background: #ff6b6b11; padding: 4px 6px; border-radius: 4px;">
+          Expected ₱53,000.00 — deposit is ₱3,000 short (missing penalty amount)
+        </div>
+      </div>
+
+      <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px; border-left: 3px solid #ff6b6b;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 10px; color: #888;">Depositor Name</div>
+            <div style="font-size: 13px; font-weight: 600;">Juan Santos</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b;"></div>
+            <span style="font-size: 10px; color: #ff6b6b;">Mismatch</span>
+          </div>
+        </div>
+        <div style="font-size: 10px; color: #ff9999; margin-top: 4px; background: #ff6b6b11; padding: 4px 6px; border-radius: 4px;">
+          Expected "Maria Santos" — possible third-party deposit
+        </div>
+      </div>
+
+      <div style="margin-bottom: 6px; background: #1c1c2e; border-radius: 6px; padding: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 10px; color: #888;">Payment Date</div>
+            <div style="font-size: 13px; font-weight: 600;">March 10, 2026</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80;"></div>
+            <span style="font-size: 10px; color: #4ade80;">Match</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <div style="flex: 1; background: transparent; border: 1px solid #f59e0b; color: #f59e0b; padding: 10px; border-radius: 6px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer;">Accept as Partial</div>
+        <div style="flex: 1; background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; padding: 10px; border-radius: 6px; text-align: center; font-size: 12px; cursor: pointer;">Escalate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PART C: ACCESS POINTS -->
+<div class="section" style="margin-top: 32px;">
+  <h3>C. Where Documents Appear</h3>
+  <p style="color: #888; font-size: 13px; margin-bottom: 16px;">The document viewer is accessed from multiple places in the app:</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+    <div style="background: #1c1c2e; border: 1px solid #333; border-radius: 8px; padding: 16px; text-align: center;">
+      <div style="font-size: 24px; margin-bottom: 8px;">👤</div>
+      <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px;">Customer Detail</div>
+      <div style="font-size: 11px; color: #888;">Payment history row → "View Document" link opens side-by-side panel</div>
+    </div>
+    <div style="background: #1c1c2e; border: 1px solid #333; border-radius: 8px; padding: 16px; text-align: center;">
+      <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+      <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px;">Collections Verification</div>
+      <div style="font-size: 11px; color: #888;">Document verification screen shows AI analysis alongside uploaded proof</div>
+    </div>
+    <div style="background: #1c1c2e; border: 1px solid #333; border-radius: 8px; padding: 16px; text-align: center;">
+      <div style="font-size: 24px; margin-bottom: 8px;">📋</div>
+      <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px;">AP Approval Queue</div>
+      <div style="font-size: 11px; color: #888;">"View Documents" button on supplier claims opens the same viewer for delivery reports</div>
+    </div>
+  </div>
+</div>

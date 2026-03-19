@@ -1,7 +1,10 @@
 'use client'
 
-import type { PaymentWithAllocations } from '@/types'
+import { useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import type { PaymentWithAllocations, DocumentRecord } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { DocumentViewer } from '@/components/documents/DocumentViewer'
 
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
@@ -37,9 +40,67 @@ function Badge({ label, className }: { label: string; className?: string }) {
   )
 }
 
+// ─── Document viewer dialog ────────────────────────────────────────────────────
+
+function DocumentDialog({
+  doc,
+  customerName,
+}: {
+  doc: DocumentRecord
+  customerName?: string
+}) {
+  const [open, setOpen] = useState(false)
+
+  const viewerDoc = {
+    documentId: doc.document_id,
+    fileUrl: doc.file_url,
+    fileName: doc.file_name,
+    fileType: doc.file_type,
+    ocrResult: doc.ocr_result,
+    ocrStatus: doc.ocr_status,
+    validationResult: doc.validation_result,
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
+        <button className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors">
+          View Document
+        </button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl focus:outline-none">
+          <div className="flex items-center justify-between px-5 py-3 bg-[#1c1c2e] border-b border-[#2a2a3e]">
+            <Dialog.Title className="text-sm font-semibold text-[#e0e0f0]">
+              Payment Proof — {doc.file_name}
+            </Dialog.Title>
+            <Dialog.Close asChild>
+              <button className="text-[#6666aa] hover:text-[#aaaacc] text-xl leading-none">&times;</button>
+            </Dialog.Close>
+          </div>
+          <DocumentViewer
+            document={viewerDoc}
+            customerName={customerName ?? doc.customer_name}
+            invoiceNumber={doc.invoice_number ?? undefined}
+          />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 // ─── Payment card ─────────────────────────────────────────────────────────────
 
-function PaymentCard({ payment }: { payment: PaymentWithAllocations }) {
+function PaymentCard({
+  payment,
+  document: doc,
+  customerName,
+}: {
+  payment: PaymentWithAllocations
+  document?: DocumentRecord
+  customerName?: string
+}) {
   const formattedDate = payment.paymentDate
     ? new Date(payment.paymentDate).toLocaleDateString('en-PH', {
         year: 'numeric',
@@ -63,6 +124,9 @@ function PaymentCard({ payment }: { payment: PaymentWithAllocations }) {
             label={payment.status}
             className={STATUS_BADGE[payment.status]}
           />
+          {doc && (
+            <DocumentDialog doc={doc} customerName={customerName} />
+          )}
         </div>
         <span className="text-sm font-bold text-slate-800">
           {formatCurrency(payment.amount)}
@@ -133,9 +197,21 @@ function PaymentCard({ payment }: { payment: PaymentWithAllocations }) {
 
 export function PaymentAllocations({
   payments,
+  documents = [],
+  customerName,
 }: {
   payments: PaymentWithAllocations[]
+  documents?: DocumentRecord[]
+  customerName?: string
 }) {
+  // Build a map from paymentId → DocumentRecord
+  const docByPaymentId = new Map<number, DocumentRecord>()
+  for (const doc of documents) {
+    if (doc.payment_id != null) {
+      docByPaymentId.set(doc.payment_id, doc)
+    }
+  }
+
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden">
       <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
@@ -148,7 +224,12 @@ export function PaymentAllocations({
           <p className="text-slate-400 text-sm text-center py-4">No payment history found.</p>
         ) : (
           payments.map((payment) => (
-            <PaymentCard key={payment.paymentId} payment={payment} />
+            <PaymentCard
+              key={payment.paymentId}
+              payment={payment}
+              document={docByPaymentId.get(payment.paymentId)}
+              customerName={customerName}
+            />
           ))
         )}
       </div>

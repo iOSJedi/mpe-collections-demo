@@ -6,6 +6,7 @@ import type { ClaimSummary, WorkflowStatus } from '@/types'
 import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import WorkflowTimeline from '@/components/payable/WorkflowTimeline'
+import { DocumentViewer } from '@/components/documents/DocumentViewer'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,51 @@ function pendingForRole(claim: ClaimSummary, role: Role): boolean {
   return ['AP_APPROVED', 'PENDING_FM_REVIEW'].includes(claim.workflowStatus)
 }
 
+// ─── DocumentDialog ───────────────────────────────────────────────────────────
+
+interface DocumentDialogProps {
+  claim: ClaimSummary | null
+  onClose: () => void
+}
+
+function DocumentDialog({ claim, onClose }: DocumentDialogProps) {
+  if (!claim) return null
+
+  const viewerDoc = {
+    documentId: 0,
+    fileUrl: claim.claimDocumentUrl || '',
+    fileName: 'Delivery Report',
+    fileType: 'image/jpeg',
+    ocrResult: null,
+    ocrStatus: 'N/A',
+    validationResult: null,
+  }
+
+  return (
+    <Dialog.Root open={!!claim} onOpenChange={(v) => { if (!v) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl focus:outline-none">
+          <div className="flex items-center justify-between px-5 py-3 bg-[#1c1c2e] border-b border-[#2a2a3e]">
+            <Dialog.Title className="text-sm font-semibold text-[#e0e0f0]">
+              Claim Document — {claim.invoiceNumber}
+            </Dialog.Title>
+            <Dialog.Close asChild>
+              <button className="text-[#6666aa] hover:text-[#aaaacc] text-xl leading-none">&times;</button>
+            </Dialog.Close>
+          </div>
+          <DocumentViewer
+            document={viewerDoc}
+            customerName={claim.supplierName}
+            invoiceNumber={claim.invoiceNumber}
+            expectedAmount={claim.amount}
+          />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 // ─── ClaimCard ────────────────────────────────────────────────────────────────
 
 interface ClaimCardProps {
@@ -77,9 +123,10 @@ interface ClaimCardProps {
   onApprove: (id: number) => void
   onReject: (id: number) => void
   onViewTimeline: (claim: ClaimSummary) => void
+  onViewDocument: (claim: ClaimSummary) => void
 }
 
-function ClaimCard({ claim, role, onApprove, onReject, onViewTimeline }: ClaimCardProps) {
+function ClaimCard({ claim, role, onApprove, onReject, onViewTimeline, onViewDocument }: ClaimCardProps) {
   return (
     <div className="border border-slate-200 rounded-xl p-4 bg-white space-y-3 hover:shadow-sm transition-shadow">
       {/* Header row */}
@@ -141,7 +188,7 @@ function ClaimCard({ claim, role, onApprove, onReject, onViewTimeline }: ClaimCa
               Reject
             </button>
             <button
-              onClick={() => claim.claimDocumentUrl && window.open(claim.claimDocumentUrl, '_blank')}
+              onClick={() => onViewDocument(claim)}
               disabled={!claim.claimDocumentUrl}
               className="px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -284,6 +331,9 @@ export function ApprovalQueue() {
   // Timeline dialog state
   const [timelineClaim, setTimelineClaim] = useState<ClaimSummary | null>(null)
 
+  // Document dialog state
+  const [documentClaim, setDocumentClaim] = useState<ClaimSummary | null>(null)
+
   const fetchClaims = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -401,6 +451,7 @@ export function ApprovalQueue() {
                 onApprove={handleApprove}
                 onReject={(id) => setRejectTargetId(id)}
                 onViewTimeline={setTimelineClaim}
+                onViewDocument={setDocumentClaim}
               />
             </div>
           ))}
@@ -418,6 +469,12 @@ export function ApprovalQueue() {
       <TimelineDialog
         claim={timelineClaim}
         onClose={() => setTimelineClaim(null)}
+      />
+
+      {/* Document dialog */}
+      <DocumentDialog
+        claim={documentClaim}
+        onClose={() => setDocumentClaim(null)}
       />
     </div>
   )

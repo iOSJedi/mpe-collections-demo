@@ -1,0 +1,112 @@
+<h2>Section 1: Data Model Changes</h2>
+<p class="subtitle">New tables and columns to support all three features</p>
+
+<div class="section">
+  <h3>New Tables</h3>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
+
+    <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px;">
+      <div style="color: #7c8aff; font-weight: 600; font-size: 14px; margin-bottom: 12px;">penalty_config_col</div>
+      <div style="font-size: 12px; color: #888; margin-bottom: 8px;">Configurable penalty settings</div>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #e8c170;">configId</td><td style="padding: 4px; color: #888;">serial PK</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">penaltyRatePercent</td><td style="padding: 4px; color: #888;">numeric (default 2.0)</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">penaltyFrequency</td><td style="padding: 4px; color: #888;">varchar ('MONTHLY')</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">applicationMethod</td><td style="padding: 4px; color: #888;">varchar ('PENALTIES_FIRST' | 'FIFO')</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">gracePeriodDays</td><td style="padding: 4px; color: #888;">integer (default 0)</td></tr>
+        <tr><td style="padding: 4px; color: #ccc;">updatedAt</td><td style="padding: 4px; color: #888;">timestamp</td></tr>
+      </table>
+    </div>
+
+    <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px;">
+      <div style="color: #7c8aff; font-weight: 600; font-size: 14px; margin-bottom: 12px;">penalty_ledger_col</div>
+      <div style="font-size: 12px; color: #888; margin-bottom: 8px;">Tracks accrued penalties per invoice per period</div>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #e8c170;">penaltyId</td><td style="padding: 4px; color: #888;">serial PK</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #70b8e8;">invoiceId</td><td style="padding: 4px; color: #888;">FK → invoices_col</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">periodLabel</td><td style="padding: 4px; color: #888;">varchar ('Month 1', 'Month 2'...)</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">penaltyAmount</td><td style="padding: 4px; color: #888;">numeric</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">penaltyRate</td><td style="padding: 4px; color: #888;">numeric (rate at time of accrual)</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">accrualDate</td><td style="padding: 4px; color: #888;">date</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">status</td><td style="padding: 4px; color: #888;">varchar ('ACTIVE' | 'PAID' | 'WAIVED')</td></tr>
+        <tr><td style="padding: 4px; color: #ccc;">paidAmount</td><td style="padding: 4px; color: #888;">numeric (default 0)</td></tr>
+      </table>
+    </div>
+
+    <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px;">
+      <div style="color: #7c8aff; font-weight: 600; font-size: 14px; margin-bottom: 12px;">payment_allocations_col</div>
+      <div style="font-size: 12px; color: #888; margin-bottom: 8px;">How each payment was applied across invoices &amp; penalties</div>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #e8c170;">allocationId</td><td style="padding: 4px; color: #888;">serial PK</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #70b8e8;">paymentId</td><td style="padding: 4px; color: #888;">FK → incoming_payments_col</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #70b8e8;">invoiceId</td><td style="padding: 4px; color: #888;">FK → invoices_col</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #70b8e8;">penaltyId</td><td style="padding: 4px; color: #888;">FK → penalty_ledger_col (nullable)</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">allocationType</td><td style="padding: 4px; color: #888;">varchar ('PRINCIPAL' | 'PENALTY')</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">amount</td><td style="padding: 4px; color: #888;">numeric</td></tr>
+        <tr><td style="padding: 4px; color: #ccc;">createdAt</td><td style="padding: 4px; color: #888;">timestamp</td></tr>
+      </table>
+    </div>
+
+    <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px;">
+      <div style="color: #7c8aff; font-weight: 600; font-size: 14px; margin-bottom: 12px;">ap_workflow_events_col</div>
+      <div style="font-size: 12px; color: #888; margin-bottom: 8px;">Timeline events for AP payment lifecycle</div>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #e8c170;">eventId</td><td style="padding: 4px; color: #888;">serial PK</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #70b8e8;">poId</td><td style="padding: 4px; color: #888;">FK → purchase_orders_col</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">eventType</td><td style="padding: 4px; color: #888;">varchar (see event types below)</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">eventData</td><td style="padding: 4px; color: #888;">jsonb (flexible payload)</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">performedBy</td><td style="padding: 4px; color: #888;">varchar (user email)</td></tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;"><td style="padding: 4px; color: #ccc;">notes</td><td style="padding: 4px; color: #888;">text (nullable)</td></tr>
+        <tr><td style="padding: 4px; color: #ccc;">createdAt</td><td style="padding: 4px; color: #888;">timestamp</td></tr>
+      </table>
+      <div style="margin-top: 12px; font-size: 11px; color: #888;">
+        <strong style="color: #aaa;">Event types:</strong> CLAIM_SUBMITTED · DELIVERY_REPORT_UPLOADED · GR_CONFIRMED · INVOICE_SUBMITTED · THREE_WAY_MATCH · AP_CLERK_APPROVED · AP_CLERK_REJECTED · FM_APPROVED · FM_REJECTED · PAYMENT_SCHEDULED · PAYMENT_RELEASED
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Modified Existing Tables</h3>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
+
+    <div style="background: #1a2e1a; border: 1px solid #2a5a2a; border-radius: 8px; padding: 16px;">
+      <div style="color: #70e870; font-weight: 600; font-size: 14px; margin-bottom: 12px;">invoices_col <span style="color: #888; font-size: 11px;">+ new columns</span></div>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #2a3e2a;"><td style="padding: 4px; color: #70e870;">+ totalPenalties</td><td style="padding: 4px; color: #888;">numeric (default 0)</td></tr>
+        <tr><td style="padding: 4px; color: #70e870;">+ penaltiesPaid</td><td style="padding: 4px; color: #888;">numeric (default 0)</td></tr>
+      </table>
+      <div style="font-size: 11px; color: #888; margin-top: 8px;">Denormalized totals for fast queries. Source of truth remains penalty_ledger_col.</div>
+    </div>
+
+    <div style="background: #1a2e1a; border: 1px solid #2a5a2a; border-radius: 8px; padding: 16px;">
+      <div style="color: #70e870; font-weight: 600; font-size: 14px; margin-bottom: 12px;">supplier_invoices_col <span style="color: #888; font-size: 11px;">+ new columns</span></div>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #2a3e2a;"><td style="padding: 4px; color: #70e870;">+ workflowStatus</td><td style="padding: 4px; color: #888;">varchar ('PENDING_REVIEW' | 'AP_APPROVED' | 'FM_APPROVED' | 'REJECTED' | 'RELEASED')</td></tr>
+        <tr><td style="padding: 4px; color: #70e870;">+ claimDocumentUrl</td><td style="padding: 4px; color: #888;">text (base64 data URI)</td></tr>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Relationship Diagram</h3>
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 20px; font-family: monospace; font-size: 12px; line-height: 1.8;">
+    <div style="color: #888;">── Feature 1: Penalty &amp; Payment Breakdown ──</div>
+    <div><span style="color: #7c8aff;">penalty_config_col</span> <span style="color: #555;">──── global settings (1 row) ────</span></div>
+    <div><span style="color: #7c8aff;">invoices_col</span> <span style="color: #555;">──1:N──▸</span> <span style="color: #7c8aff;">penalty_ledger_col</span> <span style="color: #888;">(one entry per overdue period)</span></div>
+    <div><span style="color: #7c8aff;">incoming_payments_col</span> <span style="color: #555;">──1:N──▸</span> <span style="color: #7c8aff;">payment_allocations_col</span> <span style="color: #888;">(how payment was split)</span></div>
+    <div><span style="color: #7c8aff;">payment_allocations_col</span> <span style="color: #555;">──N:1──▸</span> <span style="color: #7c8aff;">invoices_col</span> + <span style="color: #7c8aff;">penalty_ledger_col</span></div>
+    <br/>
+    <div style="color: #888;">── Feature 2: AP Supplier Workflow ──</div>
+    <div><span style="color: #7c8aff;">purchase_orders_col</span> <span style="color: #555;">──1:N──▸</span> <span style="color: #7c8aff;">ap_workflow_events_col</span> <span style="color: #888;">(full timeline)</span></div>
+    <div><span style="color: #7c8aff;">supplier_invoices_col</span> <span style="color: #555;">── workflowStatus tracks approval stage ──</span></div>
+    <br/>
+    <div style="color: #888;">── Feature 3: Document AI Analysis ──</div>
+    <div><span style="color: #7c8aff;">documents_col</span> <span style="color: #888;">(existing — no schema changes, UI-only enhancement)</span></div>
+  </div>
+</div>

@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import { PenaltySettings } from '@/components/settings/PenaltySettings'
 import { useRouter } from 'next/navigation'
 import { useAppDispatch, useAppSelector } from '@/store'
 import { navigate } from '@/store/slices/navSlice'
@@ -334,6 +335,10 @@ export function Sidebar() {
                   {seedResult.message}
                 </div>
               )}
+              <div className="border-t border-slate-200 pt-4">
+                <h4 className="text-sm font-medium text-slate-700 mb-3">Penalty Configuration</h4>
+                <PenaltySettings />
+              </div>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { CustomerDetail as CustomerDetailType, ContractSummary, CustomerBreakdown, PaymentWithAllocations } from '@/types'
+import type { CustomerDetail as CustomerDetailType, ContractSummary, CustomerBreakdown, PaymentWithAllocations, DocumentRecord } from '@/types'
 import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { InvoiceBreakdown } from './InvoiceBreakdown'
@@ -128,6 +128,7 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [breakdownPayments, setBreakdownPayments] = useState<PaymentWithAllocations[]>([])
+  const [customerDocuments, setCustomerDocuments] = useState<DocumentRecord[]>([])
 
   useEffect(() => {
     if (!customerId || isNaN(customerId)) return
@@ -146,12 +147,17 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
         if (!res.ok) return null
         return res.json() as Promise<CustomerBreakdown>
       }).catch(() => null),
+      apiFetch(`/api/documents?customerId=${customerId}`).then(async (res) => {
+        if (!res.ok) return []
+        return res.json() as Promise<DocumentRecord[]>
+      }).catch(() => []),
     ])
-      .then(([customerData, breakdownData]) => {
+      .then(([customerData, breakdownData, docsData]) => {
         setData(customerData)
         if (breakdownData) {
           setBreakdownPayments(breakdownData.payments)
         }
+        setCustomerDocuments(docsData)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Unknown error'))
       .finally(() => setLoading(false))
@@ -351,7 +357,11 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
       <InvoiceBreakdown customerId={customerId} />
 
       {/* Payment history with allocation detail */}
-      <PaymentAllocations payments={breakdownPayments} />
+      <PaymentAllocations
+        payments={breakdownPayments}
+        documents={customerDocuments}
+        customerName={data.name}
+      />
     </div>
   )
 }
