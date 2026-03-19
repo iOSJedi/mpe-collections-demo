@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth-middleware'
 import { seedDatabase } from '@/lib/seed'
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 export const POST = withAuth(async (_request: NextRequest) => {
   try {

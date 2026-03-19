@@ -211,35 +211,17 @@ export async function seedDatabase() {
   `))
 
   console.log('Truncating all tables...')
-  // Use CASCADE to handle FK dependencies in one shot; RESTART IDENTITY resets serials.
-  const tables = [
-    'penalty_config_col',
-    'penalty_ledger_col',
-    'payment_allocations_col',
-    'ap_workflow_events_col',
-    'cash_flow_forecasts_col',
-    'escalations_col',
-    'documents_col',
-    'insight_cards_col',
-    'payment_patterns_col',
-    'credit_risk_scores_col',
-    'delinquency_scores_col',
-    'payer_segments_col',
-    'three_way_matches_col',
-    'outgoing_payments_col',
-    'supplier_invoices_col',
-    'goods_receipts_col',
-    'purchase_orders_col',
-    'suppliers_col',
-    'incoming_payments_col',
-    'qr_codes_col',
-    'invoices_col',
-    'contracts_col',
-    'customers_col',
-  ]
-  for (const table of tables) {
-    await db.execute(sql.raw(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`))
-  }
+  // Single TRUNCATE statement for all tables — CASCADE handles FK deps, RESTART IDENTITY resets serials.
+  await db.execute(sql.raw(`
+    TRUNCATE TABLE
+      penalty_config_col, penalty_ledger_col, payment_allocations_col, ap_workflow_events_col,
+      cash_flow_forecasts_col, escalations_col, documents_col, insight_cards_col,
+      payment_patterns_col, credit_risk_scores_col, delinquency_scores_col, payer_segments_col,
+      three_way_matches_col, outgoing_payments_col, supplier_invoices_col, goods_receipts_col,
+      purchase_orders_col, suppliers_col, incoming_payments_col, qr_codes_col,
+      invoices_col, contracts_col, customers_col
+    RESTART IDENTITY CASCADE
+  `))
   console.log('  Tables truncated\n')
 
   // ── 1. INSERT CUSTOMERS ────────────────────────────────────────────────────
@@ -1118,11 +1100,15 @@ export async function seedDatabase() {
     await db.insert(penaltyLedger).values(chunk)
   }
 
-  // Update denormalized totals on invoices
-  for (const { invoiceId, total } of invoicePenaltyTotals) {
-    await db.update(invoices)
-      .set({ totalPenalties: String(total), penaltiesPaid: '0' })
-      .where(eq(invoices.invoiceId, invoiceId))
+  // Update denormalized totals on invoices (single SQL call)
+  if (invoicePenaltyTotals.length > 0) {
+    const cases = invoicePenaltyTotals.map(({ invoiceId, total }) =>
+      `WHEN ${invoiceId} THEN ${total}`
+    ).join(' ')
+    const ids = invoicePenaltyTotals.map(({ invoiceId }) => invoiceId).join(',')
+    await db.execute(sql.raw(
+      `UPDATE invoices_col SET total_penalties = CASE invoice_id ${cases} END, penalties_paid = 0 WHERE invoice_id IN (${ids})`
+    ))
   }
   console.log(`  ${penaltyCount} penalty ledger entries seeded`)
 
@@ -1174,12 +1160,12 @@ export async function seedDatabase() {
 
   let eventCount = 0
   const eventBatch: { supplierInvoiceId: number; poId: number; eventType: string; eventData: Record<string, unknown>; performedBy: string; createdAt: Date }[] = []
+  const statusUpdates: { id: number; status: string }[] = []
 
   for (let i = 0; i < allSupplierInvoices.length; i++) {
     const { si, po, sup } = allSupplierInvoices[i]
-    if (!po || !sup) continue // skip if join returned null
+    if (!po || !sup) continue
 
-    // Determine how far along the workflow based on payment status
     let stepsCompleted: number
     if (si.paymentStatus === 'PAID') {
       stepsCompleted = 8
@@ -1190,9 +1176,7 @@ export async function seedDatabase() {
     }
 
     const finalStatus = WORKFLOW_STEPS[stepsCompleted - 1].status
-    await db.update(supplierInvoices)
-      .set({ workflowStatus: finalStatus })
-      .where(eq(supplierInvoices.supplierInvoiceId, si.supplierInvoiceId))
+    statusUpdates.push({ id: si.supplierInvoiceId, status: finalStatus })
 
     const baseDate = new Date(si.submittedDate)
     for (let s = 0; s < stepsCompleted; s++) {
@@ -1208,6 +1192,17 @@ export async function seedDatabase() {
       })
       eventCount++
     }
+  }
+
+  // Batch update workflow statuses (single SQL call)
+  if (statusUpdates.length > 0) {
+    const cases = statusUpdates.map(({ id, status }) =>
+      `WHEN ${id} THEN '${status}'`
+    ).join(' ')
+    const ids = statusUpdates.map(({ id }) => id).join(',')
+    await db.execute(sql.raw(
+      `UPDATE supplier_invoices_col SET workflow_status = CASE supplier_invoice_id ${cases} END WHERE supplier_invoice_id IN (${ids})`
+    ))
   }
 
   // Batch insert workflow events in chunks of 50
