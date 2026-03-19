@@ -46,6 +46,8 @@ export const invoices = pgTable('invoices_col', {
   amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
   balanceRemaining: decimal('balance_remaining', { precision: 12, scale: 2 }).notNull(),
   status: varchar('status', { length: 20 }).notNull().default('PENDING'),
+  totalPenalties: decimal('total_penalties', { precision: 12, scale: 2 }).notNull().default('0'),
+  penaltiesPaid: decimal('penalties_paid', { precision: 12, scale: 2 }).notNull().default('0'),
   issuedAt: timestamp('issued_at').defaultNow(),
 }, (table) => [
   index('idx_invoices_customer_col').on(table.customerId),
@@ -56,7 +58,7 @@ export const invoices = pgTable('invoices_col', {
 
 export const incomingPayments = pgTable('incoming_payments_col', {
   paymentId: serial('payment_id').primaryKey(),
-  invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId),
+  invoiceId: integer('invoice_id').references(() => invoices.invoiceId),
   customerId: integer('customer_id').notNull().references(() => customers.customerId),
   amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
   paymentMethod: varchar('payment_method', { length: 20 }).notNull(),
@@ -175,6 +177,8 @@ export const supplierInvoices = pgTable('supplier_invoices_col', {
   paymentStatus: varchar('payment_status', { length: 20 }).notNull().default('UNPAID'),
   amountPaid: decimal('amount_paid', { precision: 12, scale: 2 }).notNull().default('0'),
   paymentDate: date('payment_date'),
+  workflowStatus: varchar('workflow_status', { length: 30 }).notNull().default('SUBMITTED'),
+  claimDocumentUrl: text('claim_document_url'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
   index('idx_si_supplier_col').on(table.supplierId),
@@ -293,3 +297,58 @@ export const paymentPatterns = pgTable('payment_patterns_col', {
   partialPaymentRate: decimal('partial_payment_rate', { precision: 5, scale: 2 }),
   scoredAt: timestamp('scored_at').defaultNow(),
 })
+
+// ─── PENALTY & PAYMENT ALLOCATION ────────────────────────────
+
+export const penaltyConfig = pgTable('penalty_config_col', {
+  configId: serial('config_id').primaryKey(),
+  penaltyRatePercent: decimal('penalty_rate_percent', { precision: 5, scale: 2 }).notNull().default('2.0'),
+  penaltyFrequency: varchar('penalty_frequency', { length: 20 }).notNull().default('MONTHLY'),
+  applicationMethod: varchar('application_method', { length: 20 }).notNull().default('PENALTIES_FIRST'),
+  gracePeriodDays: integer('grace_period_days').notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const penaltyLedger = pgTable('penalty_ledger_col', {
+  penaltyId: serial('penalty_id').primaryKey(),
+  invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId),
+  periodLabel: varchar('period_label', { length: 20 }).notNull(),
+  penaltyAmount: decimal('penalty_amount', { precision: 12, scale: 2 }).notNull(),
+  penaltyRate: decimal('penalty_rate', { precision: 5, scale: 2 }).notNull(),
+  accrualDate: date('accrual_date').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('ACTIVE'),
+  paidAmount: decimal('paid_amount', { precision: 12, scale: 2 }).notNull().default('0'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => [
+  index('idx_penalty_ledger_invoice_col').on(table.invoiceId),
+])
+
+export const paymentAllocations = pgTable('payment_allocations_col', {
+  allocationId: serial('allocation_id').primaryKey(),
+  paymentId: integer('payment_id').notNull().references(() => incomingPayments.paymentId),
+  invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId),
+  penaltyId: integer('penalty_id').references(() => penaltyLedger.penaltyId),
+  allocationType: varchar('allocation_type', { length: 20 }).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_alloc_payment_col').on(table.paymentId),
+  index('idx_alloc_invoice_col').on(table.invoiceId),
+])
+
+// ─── AP WORKFLOW ─────────────────────────────────────────────
+
+export const apWorkflowEvents = pgTable('ap_workflow_events_col', {
+  eventId: serial('event_id').primaryKey(),
+  supplierInvoiceId: integer('supplier_invoice_id').notNull().references(() => supplierInvoices.supplierInvoiceId),
+  poId: integer('po_id').notNull().references(() => purchaseOrders.poId),
+  eventType: varchar('event_type', { length: 40 }).notNull(),
+  eventData: jsonb('event_data'),
+  performedBy: varchar('performed_by', { length: 200 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_wf_supplier_invoice_col').on(table.supplierInvoiceId),
+  index('idx_wf_po_col').on(table.poId),
+])
