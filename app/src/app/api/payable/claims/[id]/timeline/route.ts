@@ -44,21 +44,37 @@ export async function GET(
 
     // Fetch all workflow events ordered by createdAt ASC
     const eventRows = await db
-      .select()
+      .select({
+        eventId: apWorkflowEvents.eventId,
+        supplierInvoiceId: apWorkflowEvents.supplierInvoiceId,
+        poId: apWorkflowEvents.poId,
+        eventType: apWorkflowEvents.eventType,
+        eventData: apWorkflowEvents.eventData,
+        performedBy: apWorkflowEvents.performedBy,
+        notes: apWorkflowEvents.notes,
+        createdAt: apWorkflowEvents.createdAt,
+      })
       .from(apWorkflowEvents)
       .where(eq(apWorkflowEvents.supplierInvoiceId, supplierInvoiceId))
       .orderBy(asc(apWorkflowEvents.createdAt))
 
-    const events: WorkflowEvent[] = eventRows.map((r) => ({
-      eventId: r.eventId,
-      supplierInvoiceId: r.supplierInvoiceId,
-      poId: r.poId,
-      eventType: r.eventType as WorkflowEventType,
-      eventData: r.eventData as Record<string, unknown> | null,
-      performedBy: r.performedBy ?? null,
-      notes: r.notes ?? null,
-      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt ?? ''),
-    }))
+    const events: WorkflowEvent[] = eventRows.map((r) => {
+      // eventData may be double-encoded JSON string from pg-proxy
+      let eventData: Record<string, unknown> | null = null
+      if (r.eventData) {
+        eventData = typeof r.eventData === 'string' ? JSON.parse(r.eventData) : r.eventData as Record<string, unknown>
+      }
+      return {
+        eventId: r.eventId,
+        supplierInvoiceId: r.supplierInvoiceId,
+        poId: r.poId,
+        eventType: r.eventType as WorkflowEventType,
+        eventData,
+        performedBy: r.performedBy ?? null,
+        notes: r.notes ?? null,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt ?? ''),
+      }
+    })
 
     // Compute future steps based on which steps have already occurred
     const completedEventTypes = new Set(events.map((e) => e.eventType))
