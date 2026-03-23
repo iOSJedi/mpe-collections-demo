@@ -57,7 +57,7 @@ export async function GET(
       eventData: r.eventData as Record<string, unknown> | null,
       performedBy: r.performedBy ?? null,
       notes: r.notes ?? null,
-      createdAt: r.createdAt?.toISOString() ?? '',
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt ?? ''),
     }))
 
     // Compute future steps based on which steps have already occurred

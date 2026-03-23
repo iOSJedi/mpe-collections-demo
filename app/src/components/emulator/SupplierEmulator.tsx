@@ -51,19 +51,18 @@ function WorkflowTimeline({ claimId }: { claimId: number }) {
     setLoading(true)
     setError(null)
     apiFetch(`/api/payable/claims/${claimId}/timeline`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then((data) => {
-        console.log('Timeline data for claim', claimId, data)
+      .then(async (r) => {
+        const text = await r.text()
+        console.log('Timeline raw response for claim', claimId, 'status:', r.status, 'body:', text)
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${text}`)
+        const data = JSON.parse(text)
         setEvents(Array.isArray(data.events) ? data.events : [])
         setFutureSteps(Array.isArray(data.futureSteps) ? data.futureSteps : [])
         setLoading(false)
       })
       .catch((err) => {
         console.error('Timeline fetch error:', err)
-        setError('Failed to load timeline')
+        setError(err instanceof Error ? err.message : 'Failed to load timeline')
         setLoading(false)
       })
   }, [claimId])
