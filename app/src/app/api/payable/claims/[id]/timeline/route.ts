@@ -86,7 +86,9 @@ export async function GET(
       futureSteps,
     })
   } catch (error) {
-    console.error('Failed to fetch timeline:', error)
-    return NextResponse.json({ error: 'Failed to fetch timeline' }, { status: 500 })
+    const msg = error instanceof Error ? error.message : String(error)
+    const stack = error instanceof Error ? error.stack : undefined
+    console.error('Failed to fetch timeline:', msg, stack)
+    return NextResponse.json({ error: `Failed to fetch timeline: ${msg}` }, { status: 500 })
   }
 }
