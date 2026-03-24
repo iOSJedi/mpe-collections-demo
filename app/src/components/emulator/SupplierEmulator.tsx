@@ -70,36 +70,62 @@ function WorkflowTimeline({ claimId }: { claimId: number }) {
   if (loading) return <p className="text-xs text-muted-foreground">Loading timeline…</p>
   if (error) return <p className="text-xs text-red-500">{error}</p>
 
+  // Build a unified list: completed events, then waiting step, then future steps
+  const allSteps: { type: 'completed' | 'waiting' | 'future'; label: string; performer?: string; date?: string }[] = []
+  for (const ev of events) {
+    allSteps.push({ type: 'completed', label: formatStatus(ev.eventType), performer: ev.performedBy || undefined, date: ev.createdAt ? new Date(ev.createdAt).toLocaleDateString() : undefined })
+  }
+  if (futureSteps.length > 0 && events.length > 0) {
+    allSteps.push({ type: 'waiting', label: formatStatus(futureSteps[0]) })
+  }
+  const remainingFuture = futureSteps.slice(events.length > 0 ? 1 : 0)
+  for (const step of remainingFuture) {
+    allSteps.push({ type: 'future', label: formatStatus(step) })
+  }
+
   return (
-    <div className="space-y-1.5 mt-2">
-      {events.map((ev) => (
-        <div key={ev.eventId} className="flex items-start gap-2">
-          <div className="mt-0.5 h-3 w-3 rounded-full bg-green-500 shrink-0 ring-1 ring-green-300" />
-          <div>
-            <p className="text-xs font-semibold text-green-700">{formatStatus(ev.eventType)}</p>
-            {ev.performedBy && (
-              <p className="text-[10px] text-muted-foreground">by {ev.performedBy}</p>
-            )}
-            {ev.createdAt && (
-              <p className="text-[10px] text-muted-foreground">
-                {new Date(ev.createdAt).toLocaleDateString()}
-              </p>
-            )}
-          </div>
-        </div>
-      ))}
-      {futureSteps.length > 0 && events.length > 0 && (
-        <div className="flex items-start gap-2">
-          <div className="mt-0.5 h-3 w-3 rounded-full bg-amber-400 shrink-0 ring-1 ring-amber-300 animate-pulse" />
-          <p className="text-xs font-medium text-amber-600">{formatStatus(futureSteps[0])} <span className="text-[10px] font-normal text-muted-foreground">(waiting)</span></p>
-        </div>
+    <div className="relative mt-2 ml-1.5">
+      {/* Vertical connecting line */}
+      {allSteps.length > 1 && (
+        <div
+          className="absolute left-[5px] top-[6px] w-[2px]"
+          style={{
+            height: `calc(100% - 12px)`,
+            background: events.length > 0
+              ? `linear-gradient(to bottom, #22c55e 0%, #22c55e ${Math.round((events.length / allSteps.length) * 100)}%, #f59e0b ${Math.round((events.length / allSteps.length) * 100)}%, #d1d5db ${Math.round(((events.length + 1) / allSteps.length) * 100)}%, #d1d5db 100%)`
+              : '#d1d5db',
+          }}
+        />
       )}
-      {futureSteps.slice(events.length > 0 ? 1 : 0).map((step) => (
-        <div key={step} className="flex items-start gap-2 opacity-40">
-          <div className="mt-0.5 h-3 w-3 rounded-full border border-gray-400 shrink-0" />
-          <p className="text-xs">{formatStatus(step)}</p>
-        </div>
-      ))}
+
+      <div className="space-y-2.5">
+        {allSteps.map((step, i) => (
+          <div key={i} className={`relative flex items-start gap-2.5 pl-5 ${step.type === 'future' ? 'opacity-40' : ''}`}>
+            {/* Dot */}
+            <div
+              className={`absolute left-0 mt-0.5 h-3 w-3 rounded-full shrink-0 ${
+                step.type === 'completed'
+                  ? 'bg-green-500 ring-1 ring-green-300'
+                  : step.type === 'waiting'
+                  ? 'bg-amber-400 ring-1 ring-amber-300 animate-pulse'
+                  : 'border-2 border-gray-300 bg-white'
+              }`}
+            />
+            {/* Content */}
+            <div className="min-w-0">
+              <p className={`text-xs font-semibold ${
+                step.type === 'completed' ? 'text-green-700' : step.type === 'waiting' ? 'text-amber-600' : 'text-gray-500'
+              }`}>
+                {step.label}
+                {step.type === 'waiting' && <span className="text-[10px] font-normal text-muted-foreground"> (waiting)</span>}
+              </p>
+              {step.performer && <p className="text-[10px] text-muted-foreground">by {step.performer}</p>}
+              {step.date && <p className="text-[10px] text-muted-foreground">{step.date}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {events.length === 0 && futureSteps.length === 0 && (
         <p className="text-xs text-muted-foreground">No timeline events yet.</p>
       )}

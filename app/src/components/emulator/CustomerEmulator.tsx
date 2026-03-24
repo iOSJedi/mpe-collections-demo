@@ -85,7 +85,7 @@ export function CustomerEmulator() {
       <div
         className={`
           fixed bottom-10 right-4 z-50
-          w-[400px] h-[520px]
+          w-[375px] h-[740px]
           bg-white rounded-xl border border-border shadow-2xl
           flex flex-col overflow-hidden
           transition-all duration-300 ease-out
