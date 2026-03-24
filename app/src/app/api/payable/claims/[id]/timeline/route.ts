@@ -36,7 +36,7 @@ export async function GET(
       sql.raw(`SELECT workflow_status FROM supplier_invoices_col WHERE supplier_invoice_id = ${supplierInvoiceId} LIMIT 1`)
     )
 
-    const statusRows = statusResult.rows as { workflow_status: string }[]
+    const statusRows = statusResult as unknown as { workflow_status: string }[]
     if (!statusRows.length) {
       return NextResponse.json({ error: 'Supplier invoice not found' }, { status: 404 })
     }
@@ -47,7 +47,7 @@ export async function GET(
       sql.raw(`SELECT event_id, supplier_invoice_id, po_id, event_type, event_data, performed_by, notes, created_at FROM ap_workflow_events_col WHERE supplier_invoice_id = ${supplierInvoiceId} ORDER BY created_at ASC`)
     )
 
-    const eventRows = eventsResult.rows as {
+    const eventRows = eventsResult as unknown as {
       event_id: number
       supplier_invoice_id: number
       po_id: number
