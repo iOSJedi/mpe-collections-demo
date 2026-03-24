@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
-import { supplierInvoices, apWorkflowEvents } from '@/db/schema'
-import { eq, asc } from 'drizzle-orm'
-import type { WorkflowEvent, WorkflowEventType } from '@/types'
+import { sql } from 'drizzle-orm'
+import type { WorkflowEventType } from '@/types'
 
 const WORKFLOW_STEPS: WorkflowEventType[] = [
   'CLAIM_SUBMITTED',
@@ -32,63 +31,65 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid invoice ID' }, { status: 400 })
     }
 
-    // Verify invoice exists and get current status
-    const [invoice] = await db
-      .select({ workflowStatus: supplierInvoices.workflowStatus })
-      .from(supplierInvoices)
-      .where(eq(supplierInvoices.supplierInvoiceId, supplierInvoiceId))
+    // Use raw SQL to bypass Drizzle ORM mapping issues with pg-proxy
+    const statusResult = await db.execute(
+      sql.raw(`SELECT workflow_status FROM supplier_invoices_col WHERE supplier_invoice_id = ${supplierInvoiceId} LIMIT 1`)
+    )
 
-    if (!invoice) {
+    const statusRows = statusResult.rows as { workflow_status: string }[]
+    if (!statusRows.length) {
       return NextResponse.json({ error: 'Supplier invoice not found' }, { status: 404 })
     }
 
-    // Fetch all workflow events ordered by createdAt ASC
-    const eventRows = await db
-      .select({
-        eventId: apWorkflowEvents.eventId,
-        supplierInvoiceId: apWorkflowEvents.supplierInvoiceId,
-        poId: apWorkflowEvents.poId,
-        eventType: apWorkflowEvents.eventType,
-        eventData: apWorkflowEvents.eventData,
-        performedBy: apWorkflowEvents.performedBy,
-        notes: apWorkflowEvents.notes,
-        createdAt: apWorkflowEvents.createdAt,
-      })
-      .from(apWorkflowEvents)
-      .where(eq(apWorkflowEvents.supplierInvoiceId, supplierInvoiceId))
-      .orderBy(asc(apWorkflowEvents.createdAt))
+    const currentStatus = statusRows[0].workflow_status
 
-    const events: WorkflowEvent[] = eventRows.map((r) => {
-      // eventData may be double-encoded JSON string from pg-proxy
+    const eventsResult = await db.execute(
+      sql.raw(`SELECT event_id, supplier_invoice_id, po_id, event_type, event_data, performed_by, notes, created_at FROM ap_workflow_events_col WHERE supplier_invoice_id = ${supplierInvoiceId} ORDER BY created_at ASC`)
+    )
+
+    const eventRows = eventsResult.rows as {
+      event_id: number
+      supplier_invoice_id: number
+      po_id: number
+      event_type: string
+      event_data: string | Record<string, unknown> | null
+      performed_by: string | null
+      notes: string | null
+      created_at: string
+    }[]
+
+    const events = eventRows.map((r) => {
       let eventData: Record<string, unknown> | null = null
-      if (r.eventData) {
-        eventData = typeof r.eventData === 'string' ? JSON.parse(r.eventData) : r.eventData as Record<string, unknown>
+      if (r.event_data) {
+        if (typeof r.event_data === 'string') {
+          try { eventData = JSON.parse(r.event_data) } catch { eventData = null }
+        } else {
+          eventData = r.event_data
+        }
       }
       return {
-        eventId: r.eventId,
-        supplierInvoiceId: r.supplierInvoiceId,
-        poId: r.poId,
-        eventType: r.eventType as WorkflowEventType,
+        eventId: r.event_id,
+        supplierInvoiceId: r.supplier_invoice_id,
+        poId: r.po_id,
+        eventType: r.event_type as WorkflowEventType,
         eventData,
-        performedBy: r.performedBy ?? null,
+        performedBy: r.performed_by ?? null,
         notes: r.notes ?? null,
-        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt ?? ''),
+        createdAt: String(r.created_at ?? ''),
       }
     })
 
-    // Compute future steps based on which steps have already occurred
     const completedEventTypes = new Set(events.map((e) => e.eventType))
     const futureSteps = WORKFLOW_STEPS.filter((step) => !completedEventTypes.has(step))
 
     return NextResponse.json({
       events,
-      currentStatus: invoice.workflowStatus,
+      currentStatus,
       futureSteps,
     })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    const stack = error instanceof Error ? error.stack : undefined
-    console.error('Failed to fetch timeline:', msg, stack)
+    console.error('Failed to fetch timeline:', msg)
     return NextResponse.json({ error: `Failed to fetch timeline: ${msg}` }, { status: 500 })
   }
 }
