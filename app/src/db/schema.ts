@@ -17,6 +17,7 @@ export const customers = pgTable('customers_col', {
   propertyName: varchar('property_name', { length: 200 }),
   unitInfo: varchar('unit_info', { length: 200 }),
   status: varchar('status', { length: 20 }).notNull().default('ACTIVE'),
+  creditBalance: decimal('credit_balance', { precision: 12, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at').defaultNow(),
 })
 
@@ -48,6 +49,7 @@ export const invoices = pgTable('invoices_col', {
   status: varchar('status', { length: 20 }).notNull().default('PENDING'),
   totalPenalties: decimal('total_penalties', { precision: 12, scale: 2 }).notNull().default('0'),
   penaltiesPaid: decimal('penalties_paid', { precision: 12, scale: 2 }).notNull().default('0'),
+  depositForfeitureFlag: varchar('deposit_forfeiture_flag', { length: 20 }),
   issuedAt: timestamp('issued_at').defaultNow(),
 }, (table) => [
   index('idx_invoices_customer_col').on(table.customerId),
@@ -65,6 +67,8 @@ export const incomingPayments = pgTable('incoming_payments_col', {
   paymentDate: timestamp('payment_date').defaultNow(),
   stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 200 }),
   referenceNumber: varchar('reference_number', { length: 100 }),
+  checkNumber: varchar('check_number', { length: 50 }),
+  clearanceDate: date('clearance_date'),
   status: varchar('status', { length: 20 }).notNull().default('PENDING'),
   confirmedAt: timestamp('confirmed_at'),
 }, (table) => [
@@ -306,6 +310,7 @@ export const penaltyConfig = pgTable('penalty_config_col', {
   penaltyFrequency: varchar('penalty_frequency', { length: 20 }).notNull().default('MONTHLY'),
   applicationMethod: varchar('application_method', { length: 20 }).notNull().default('PENALTIES_FIRST'),
   gracePeriodDays: integer('grace_period_days').notNull().default(0),
+  depositForfeitDays: integer('deposit_forfeit_days').notNull().default(90),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
@@ -351,4 +356,69 @@ export const apWorkflowEvents = pgTable('ap_workflow_events_col', {
 }, (table) => [
   index('idx_wf_supplier_invoice_col').on(table.supplierInvoiceId),
   index('idx_wf_po_col').on(table.poId),
+])
+
+// ─── CREDIT & DEPOSITS ───────────────────────────────────────
+
+export const creditLedger = pgTable('credit_ledger_col', {
+  entryId: serial('entry_id').primaryKey(),
+  customerId: integer('customer_id').notNull().references(() => customers.customerId),
+  type: varchar('type', { length: 20 }).notNull(), // CREDIT | DEBIT | REFUND
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  description: text('description'),
+  paymentId: integer('payment_id').references(() => incomingPayments.paymentId),
+  invoiceId: integer('invoice_id').references(() => invoices.invoiceId),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_credit_ledger_customer_col').on(table.customerId),
+])
+
+export const securityDeposits = pgTable('security_deposits_col', {
+  depositId: serial('deposit_id').primaryKey(),
+  customerId: integer('customer_id').notNull().references(() => customers.customerId).unique(),
+  contractId: integer('contract_id').notNull().references(() => contracts.contractId),
+  initialAmount: decimal('initial_amount', { precision: 12, scale: 2 }).notNull(),
+  currentBalance: decimal('current_balance', { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
+export const depositForfeitures = pgTable('deposit_forfeitures_col', {
+  forfeitureId: serial('forfeiture_id').primaryKey(),
+  depositId: integer('deposit_id').notNull().references(() => securityDeposits.depositId),
+  customerId: integer('customer_id').notNull().references(() => customers.customerId),
+  invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('FLAGGED'),
+  flaggedAt: timestamp('flagged_at').defaultNow(),
+  reviewedBy: varchar('reviewed_by', { length: 200 }),
+  reviewedAt: timestamp('reviewed_at'),
+  notes: text('notes'),
+}, (table) => [
+  index('idx_forfeitures_customer_col').on(table.customerId),
+  index('idx_forfeitures_status_col').on(table.status),
+])
+
+// ─── MILESTONES ──────────────────────────────────────────────
+
+export const milestoneTemplates = pgTable('milestone_templates_col', {
+  templateId: serial('template_id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  milestones: jsonb('milestones').notNull(), // [{ label, percentage }]
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
+export const poMilestones = pgTable('po_milestones_col', {
+  milestoneId: serial('milestone_id').primaryKey(),
+  poId: integer('po_id').notNull().references(() => purchaseOrders.poId),
+  label: varchar('label', { length: 100 }).notNull(),
+  percentage: decimal('percentage', { precision: 5, scale: 2 }).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('PENDING'),
+  completedAt: timestamp('completed_at'),
+  paidAt: timestamp('paid_at'),
+  paymentReference: varchar('payment_reference', { length: 100 }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_milestones_po_col').on(table.poId),
 ])
