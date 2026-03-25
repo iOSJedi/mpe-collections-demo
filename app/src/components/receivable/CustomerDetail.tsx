@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CustomerDetail as CustomerDetailType, ContractSummary, CustomerBreakdown, PaymentWithAllocations, DocumentRecord } from '@/types'
 import { apiFetch } from '@/lib/api'
@@ -163,6 +163,21 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Unknown error'))
       .finally(() => setLoading(false))
+  }, [customerId])
+
+  const refreshBreakdown = useCallback(() => {
+    if (!customerId || isNaN(customerId)) return
+    apiFetch(`/api/receivable/${customerId}/breakdown`)
+      .then(async (res) => {
+        if (!res.ok) return null
+        return res.json() as Promise<CustomerBreakdown>
+      })
+      .then((breakdownData) => {
+        if (breakdownData) {
+          setBreakdownPayments(breakdownData.payments)
+        }
+      })
+      .catch(() => null)
   }, [customerId])
 
   if (loading) {
@@ -367,6 +382,7 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
         payments={breakdownPayments}
         documents={customerDocuments}
         customerName={data.name}
+        onRefresh={refreshBreakdown}
       />
     </div>
   )

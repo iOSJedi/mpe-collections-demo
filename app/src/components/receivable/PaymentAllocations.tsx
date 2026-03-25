@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import type { PaymentWithAllocations, DocumentRecord } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import { DocumentViewer } from '@/components/documents/DocumentViewer'
+import { CheckClearanceCard } from '@/components/receivable/CheckClearanceCard'
 
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
@@ -96,10 +97,12 @@ function PaymentCard({
   payment,
   document: doc,
   customerName,
+  onRefresh,
 }: {
   payment: PaymentWithAllocations
   document?: DocumentRecord
   customerName?: string
+  onRefresh?: () => void
 }) {
   const formattedDate = payment.paymentDate
     ? new Date(payment.paymentDate).toLocaleDateString('en-PH', {
@@ -189,6 +192,23 @@ function PaymentCard({
       {payment.allocations.length === 0 && (
         <div className="px-4 py-2 text-xs text-slate-400 italic">No allocations recorded.</div>
       )}
+
+      {/* Check clearance details */}
+      {payment.paymentMethod === 'CHECK' && (
+        <div className="px-4 pb-3">
+          <CheckClearanceCard
+            payment={{
+              paymentId: payment.paymentId,
+              checkNumber: payment.checkNumber,
+              paymentDate: payment.paymentDate,
+              clearanceDate: payment.clearanceDate,
+              status: payment.status,
+              amount: payment.amount,
+            }}
+            onActionComplete={onRefresh}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -199,10 +219,12 @@ export function PaymentAllocations({
   payments,
   documents = [],
   customerName,
+  onRefresh,
 }: {
   payments: PaymentWithAllocations[]
   documents?: DocumentRecord[]
   customerName?: string
+  onRefresh?: () => void
 }) {
   // Build a map from paymentId → DocumentRecord
   const docByPaymentId = new Map<number, DocumentRecord>()
@@ -229,6 +251,7 @@ export function PaymentAllocations({
               payment={payment}
               document={docByPaymentId.get(payment.paymentId)}
               customerName={customerName}
+              onRefresh={onRefresh}
             />
           ))
         )}

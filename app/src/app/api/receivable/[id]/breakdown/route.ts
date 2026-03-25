@@ -116,6 +116,8 @@ export async function GET(
     paymentMethod: p.paymentMethod,
     paymentDate: p.paymentDate?.toISOString() || '',
     referenceNumber: p.referenceNumber,
+    checkNumber: p.checkNumber ?? null,
+    clearanceDate: p.clearanceDate ? String(p.clearanceDate) : null,
     status: p.status,
     allocations: (allocationsByPayment.get(p.paymentId) || []).map(a => ({
       allocationId: a.allocationId,

@@ -328,6 +328,8 @@ export interface PaymentWithAllocations {
   paymentMethod: string
   paymentDate: string
   referenceNumber: string | null
+  checkNumber: string | null
+  clearanceDate: string | null
   status: string
   allocations: PaymentAllocation[]
 }
