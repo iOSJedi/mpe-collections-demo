@@ -283,6 +283,7 @@ export interface PenaltyConfig {
   penaltyFrequency: string
   applicationMethod: 'PENALTIES_FIRST' | 'FIFO'
   gracePeriodDays: number
+  depositForfeitDays: number
 }
 
 export interface PenaltyLedgerEntry {
@@ -349,6 +350,7 @@ export interface AllocationPreview {
   totalApplied: number
   totalRemaining: number
   monthlyPenaltyAccrual: number
+  excessAmount: number
 }
 
 // ─── AP Workflow Types ──────────────────────────────────────
@@ -397,3 +399,67 @@ export interface DocumentViewerData {
   invoiceNumber?: string
   expectedAmount?: number
 }
+
+// ─── Credit & Deposit Types ─────────────────────────────────
+
+export interface CreditLedgerEntry {
+  entryId: number
+  customerId: number
+  type: 'CREDIT' | 'DEBIT' | 'REFUND'
+  amount: number
+  description: string | null
+  paymentId: number | null
+  invoiceId: number | null
+  createdAt: string
+}
+
+export interface SecurityDeposit {
+  depositId: number
+  customerId: number
+  contractId: number
+  initialAmount: number
+  currentBalance: number
+}
+
+export interface DepositForfeiture {
+  forfeitureId: number
+  depositId: number
+  customerId: number
+  invoiceId: number
+  invoiceNumber?: string
+  customerName?: string
+  propertyName?: string
+  amount: number
+  status: 'FLAGGED' | 'APPROVED' | 'REJECTED'
+  flaggedAt: string
+  reviewedBy: string | null
+  reviewedAt: string | null
+  notes: string | null
+  daysOverdue?: number
+  depositBalance?: number
+}
+
+// ─── Milestone Types ────────────────────────────────────────
+
+export interface MilestoneTemplate {
+  templateId: number
+  name: string
+  milestones: { label: string; percentage: number }[]
+}
+
+export interface POMilestone {
+  milestoneId: number
+  poId: number
+  label: string
+  percentage: number
+  amount: number
+  status: 'PENDING' | 'COMPLETED' | 'PAID'
+  completedAt: string | null
+  paidAt: string | null
+  paymentReference: string | null
+  sortOrder: number
+}
+
+// ─── Check Payment Types ────────────────────────────────────
+
+export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'FAILED' | 'PENDING_CLEARANCE' | 'BOUNCED'

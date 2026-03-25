@@ -148,5 +148,6 @@ export function calculateAllocation(
     totalApplied: Math.round((paymentAmount - Math.max(0, remaining)) * 100) / 100,
     totalRemaining: Math.round(totalRemaining * 100) / 100,
     monthlyPenaltyAccrual,
+    excessAmount: Math.max(0, remaining),
   }
 }
