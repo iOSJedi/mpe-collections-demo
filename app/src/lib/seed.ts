@@ -3,6 +3,7 @@ import { sql, eq } from 'drizzle-orm'
 import * as schema from '@/db/schema'
 import {
   penaltyConfig, penaltyLedger, paymentAllocations, apWorkflowEvents,
+  creditLedger, securityDeposits, depositForfeitures, milestoneTemplates, poMilestones,
 } from '@/db/schema'
 
 // Aliases for tables used in new seed steps (the rest use `schema.*`)
@@ -208,12 +209,18 @@ export async function seedDatabase() {
     ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS workflow_status VARCHAR(30) NOT NULL DEFAULT 'SUBMITTED';
     ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS claim_document_url TEXT;
     ALTER TABLE incoming_payments_col ALTER COLUMN invoice_id DROP NOT NULL;
+    ALTER TABLE customers_col ADD COLUMN IF NOT EXISTS credit_balance DECIMAL(12,2) NOT NULL DEFAULT 0;
+    ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS deposit_forfeiture_flag VARCHAR(20);
+    ALTER TABLE incoming_payments_col ADD COLUMN IF NOT EXISTS check_number VARCHAR(50);
+    ALTER TABLE incoming_payments_col ADD COLUMN IF NOT EXISTS clearance_date DATE;
+    ALTER TABLE penalty_config_col ADD COLUMN IF NOT EXISTS deposit_forfeit_days INTEGER NOT NULL DEFAULT 90;
   `))
 
   console.log('Truncating all tables...')
   // Single TRUNCATE statement for all tables — CASCADE handles FK deps, RESTART IDENTITY resets serials.
   await db.execute(sql.raw(`
     TRUNCATE TABLE
+      credit_ledger_col, security_deposits_col, deposit_forfeitures_col, milestone_templates_col, po_milestones_col,
       penalty_config_col, penalty_ledger_col, payment_allocations_col, ap_workflow_events_col,
       cash_flow_forecasts_col, escalations_col, documents_col, insight_cards_col,
       payment_patterns_col, credit_risk_scores_col, delinquency_scores_col, payer_segments_col,
@@ -1211,6 +1218,308 @@ export async function seedDatabase() {
     await db.insert(apWorkflowEvents).values(chunk)
   }
   console.log(`  ${eventCount} AP workflow events seeded`)
+
+  // ── 20. Security Deposits (LEASE contracts) ───────────────────────────────
+
+  console.log('Seeding security deposits for LEASE contracts...')
+  type LeaseRow = { customer_id: number; contract_id: number; monthly_amount: string }
+  const leaseRows = await db.execute(sql.raw(`
+    SELECT c.customer_id, c.contract_id, c.monthly_amount
+    FROM contracts_col c
+    WHERE c.type = 'LEASE'
+  `)) as unknown as LeaseRow[]
+
+  const depositInserts = leaseRows.map((row) => ({
+    customerId: row.customer_id,
+    contractId: row.contract_id,
+    initialAmount: String((Number(row.monthly_amount) * 3).toFixed(2)),
+    currentBalance: String((Number(row.monthly_amount) * 3).toFixed(2)),
+  }))
+
+  let insertedDeposits: (typeof securityDeposits.$inferSelect)[] = []
+  if (depositInserts.length > 0) {
+    insertedDeposits = await db.insert(securityDeposits).values(depositInserts).returning()
+  }
+  console.log(`  ${insertedDeposits.length} security deposits seeded`)
+
+  // ── 21. Deposit Forfeitures ───────────────────────────────────────────────
+
+  console.log('Seeding deposit forfeitures...')
+
+  // Scenario 1: Invoice 150+ days overdue with a deposit — APPROVED forfeiture
+  type OverdueInvoiceRow = { invoice_id: number; customer_id: number; amount: string; due_date: string }
+  const scenario1Rows = await db.execute(sql.raw(`
+    SELECT i.invoice_id, i.customer_id, i.amount, i.due_date
+    FROM invoices_col i
+    INNER JOIN security_deposits_col sd ON sd.customer_id = i.customer_id
+    WHERE i.status IN ('OVERDUE', 'PARTIAL')
+      AND i.due_date < CURRENT_DATE - INTERVAL '150 days'
+    ORDER BY i.due_date ASC
+    LIMIT 1
+  `)) as unknown as OverdueInvoiceRow[]
+
+  let forfeitureCount = 0
+  if (scenario1Rows.length > 0) {
+    const s1 = scenario1Rows[0]
+    const deposit1 = insertedDeposits.find(d => d.customerId === s1.customer_id)
+    if (deposit1) {
+      const forfeitAmt = Math.min(Number(s1.amount) * 0.5, Number(deposit1.currentBalance))
+      await db.insert(depositForfeitures).values({
+        depositId: deposit1.depositId!,
+        customerId: s1.customer_id,
+        invoiceId: s1.invoice_id,
+        amount: String(forfeitAmt.toFixed(2)),
+        status: 'APPROVED',
+        reviewedBy: 'Maria Santos — Legal & Compliance',
+        reviewedAt: new Date('2026-03-01'),
+        notes: 'Forfeiture approved after 150+ days overdue. Lease agreement clause 12.4 applied.',
+      })
+      forfeitureCount++
+
+      // Reduce deposit balance
+      const newBalance = Number(deposit1.currentBalance) - forfeitAmt
+      await db.execute(sql.raw(
+        `UPDATE security_deposits_col SET current_balance = ${newBalance.toFixed(2)} WHERE deposit_id = ${deposit1.depositId}`
+      ))
+
+      // Set flag on invoice
+      await db.execute(sql.raw(
+        `UPDATE invoices_col SET deposit_forfeiture_flag = 'FORFEITED' WHERE invoice_id = ${s1.invoice_id}`
+      ))
+
+      // Scenario 2: Same customer, another invoice 90+ days overdue — FLAGGED forfeiture
+      const scenario2Rows = await db.execute(sql.raw(`
+        SELECT i.invoice_id, i.customer_id, i.amount, i.due_date
+        FROM invoices_col i
+        WHERE i.customer_id = ${s1.customer_id}
+          AND i.status IN ('OVERDUE', 'PARTIAL')
+          AND i.due_date < CURRENT_DATE - INTERVAL '90 days'
+          AND i.invoice_id <> ${s1.invoice_id}
+        ORDER BY i.due_date ASC
+        LIMIT 1
+      `)) as unknown as OverdueInvoiceRow[]
+
+      if (scenario2Rows.length > 0) {
+        const s2 = scenario2Rows[0]
+        await db.insert(depositForfeitures).values({
+          depositId: deposit1.depositId!,
+          customerId: s2.customer_id,
+          invoiceId: s2.invoice_id,
+          amount: String((Number(s2.amount) * 0.3).toFixed(2)),
+          status: 'FLAGGED',
+          notes: 'Flagged for review — 90+ days overdue. Awaiting approval.',
+        })
+        forfeitureCount++
+        await db.execute(sql.raw(
+          `UPDATE invoices_col SET deposit_forfeiture_flag = 'FLAGGED' WHERE invoice_id = ${s2.invoice_id}`
+        ))
+      }
+    }
+  }
+
+  // Scenario 4: Different customer, small deposit — fully forfeit
+  const scenario4Rows = await db.execute(sql.raw(`
+    SELECT i.invoice_id, i.customer_id, i.amount, i.due_date, sd.deposit_id, sd.current_balance
+    FROM invoices_col i
+    INNER JOIN security_deposits_col sd ON sd.customer_id = i.customer_id
+    WHERE i.status IN ('OVERDUE', 'PARTIAL')
+      AND i.due_date < CURRENT_DATE - INTERVAL '90 days'
+      AND sd.current_balance > 0
+      AND sd.customer_id <> ${scenario1Rows.length > 0 ? scenario1Rows[0].customer_id : 0}
+    ORDER BY sd.current_balance ASC
+    LIMIT 1
+  `)) as unknown as (OverdueInvoiceRow & { deposit_id: number; current_balance: string })[]
+
+  if (scenario4Rows.length > 0) {
+    const s4 = scenario4Rows[0]
+    await db.insert(depositForfeitures).values({
+      depositId: s4.deposit_id,
+      customerId: s4.customer_id,
+      invoiceId: s4.invoice_id,
+      amount: String(Number(s4.current_balance).toFixed(2)),
+      status: 'APPROVED',
+      reviewedBy: 'Jose Reyes — Collections Team',
+      reviewedAt: new Date('2026-03-10'),
+      notes: 'Full deposit forfeiture — balance fully exhausted.',
+    })
+    forfeitureCount++
+    await db.execute(sql.raw(
+      `UPDATE security_deposits_col SET current_balance = 0 WHERE deposit_id = ${s4.deposit_id}`
+    ))
+    await db.execute(sql.raw(
+      `UPDATE invoices_col SET deposit_forfeiture_flag = 'FORFEITED' WHERE invoice_id = ${s4.invoice_id}`
+    ))
+  }
+
+  console.log(`  ${forfeitureCount} deposit forfeitures seeded`)
+
+  // ── 22. Credit Ledger ─────────────────────────────────────────────────────
+
+  console.log('Seeding credit ledger entries...')
+
+  type PaidInvRow = { customer_id: number; invoice_id: number }
+  const paidInvRows = await db.execute(sql.raw(`
+    SELECT DISTINCT customer_id, invoice_id
+    FROM invoices_col
+    WHERE status = 'PAID'
+    LIMIT 2
+  `)) as unknown as PaidInvRow[]
+
+  let creditCount = 0
+  for (const row of paidInvRows) {
+    const creditAmt = randInt(3000, 8000)
+    await db.insert(creditLedger).values({
+      customerId: row.customer_id,
+      type: 'CREDIT',
+      amount: String(creditAmt.toFixed(2)),
+      description: 'Overpayment credit applied from prior invoice',
+      invoiceId: row.invoice_id,
+    })
+    await db.execute(sql.raw(
+      `UPDATE customers_col SET credit_balance = credit_balance + ${creditAmt} WHERE customer_id = ${row.customer_id}`
+    ))
+    creditCount++
+  }
+  console.log(`  ${creditCount} credit ledger entries seeded`)
+
+  // ── 23. Milestone Templates ───────────────────────────────────────────────
+
+  console.log('Seeding milestone templates...')
+  const insertedTemplates = await db.insert(milestoneTemplates).values([
+    {
+      name: 'Standard 20/40/40',
+      milestones: JSON.stringify([
+        { label: 'Mobilization', percentage: 20 },
+        { label: 'Mid-Delivery', percentage: 40 },
+        { label: 'Final Acceptance', percentage: 40 },
+      ]),
+    },
+    {
+      name: 'Equal Split 50/50',
+      milestones: JSON.stringify([
+        { label: 'Initial Delivery', percentage: 50 },
+        { label: 'Completion', percentage: 50 },
+      ]),
+    },
+    {
+      name: 'Full on Completion',
+      milestones: JSON.stringify([
+        { label: 'Full Delivery', percentage: 100 },
+      ]),
+    },
+  ]).returning()
+  console.log(`  ${insertedTemplates.length} milestone templates seeded`)
+
+  // ── 24. PO Milestones ─────────────────────────────────────────────────────
+
+  console.log('Seeding PO milestones...')
+  type PORow = { po_id: number; status: string; total_amount: string }
+  const allPORows = await db.execute(sql.raw(`
+    SELECT po_id, status, total_amount FROM purchase_orders_col
+  `)) as unknown as PORow[]
+
+  const standardTemplate = insertedTemplates[0]
+  const standardMilestones = JSON.parse(standardTemplate.milestones as string) as { label: string; percentage: number }[]
+  const poMilestoneRows: (typeof poMilestones.$inferInsert)[] = []
+
+  for (const po of allPORows) {
+    // ~30% get the Standard 20/40/40 template
+    if (rand() > 0.7) {
+      const poTotal = Number(po.total_amount)
+      const poNow = new Date('2026-03-10')
+
+      standardMilestones.forEach((m, idx) => {
+        const milestoneAmt = poTotal * (m.percentage / 100)
+        let status: string
+        let completedAt: Date | null = null
+        let paidAt: Date | null = null
+
+        if (po.status === 'CLOSED') {
+          status = 'PAID'
+          completedAt = addDays(poNow, -(randInt(10, 30) + idx * 10))
+          paidAt = addDays(completedAt, randInt(3, 7))
+        } else if (po.status === 'RECEIVED') {
+          if (idx === 0) {
+            status = 'PAID'
+            completedAt = addDays(poNow, -20)
+            paidAt = addDays(completedAt, 5)
+          } else if (idx === 1) {
+            status = 'COMPLETED'
+            completedAt = addDays(poNow, -5)
+          } else {
+            status = 'PENDING'
+          }
+        } else {
+          status = idx === 0 ? 'PENDING' : 'PENDING'
+        }
+
+        poMilestoneRows.push({
+          poId: po.po_id,
+          label: m.label,
+          percentage: String(m.percentage.toFixed(2)),
+          amount: String(milestoneAmt.toFixed(2)),
+          status,
+          completedAt,
+          paidAt,
+          paymentReference: paidAt ? `MIL-REF-${po.po_id}-${idx + 1}` : null,
+          sortOrder: idx,
+        })
+      })
+    }
+  }
+
+  // Batch insert in chunks of 50
+  let milestoneCount = 0
+  for (let i = 0; i < poMilestoneRows.length; i += 50) {
+    const chunk = poMilestoneRows.slice(i, i + 50)
+    await db.insert(poMilestones).values(chunk)
+    milestoneCount += chunk.length
+  }
+  console.log(`  ${milestoneCount} PO milestones seeded`)
+
+  // ── 25. Check Payments ────────────────────────────────────────────────────
+
+  console.log('Seeding check payment entries...')
+  type CheckInvoiceRow = { invoice_id: number; customer_id: number; amount: string }
+  const checkInvRows = await db.execute(sql.raw(`
+    SELECT invoice_id, customer_id, amount
+    FROM invoices_col
+    WHERE status = 'PAID'
+    LIMIT 4
+  `)) as unknown as CheckInvoiceRow[]
+
+  const now = new Date('2026-03-25')
+  const checkPaymentData = [
+    { daysAgo: 1, status: 'PENDING_CLEARANCE', checkNum: 'CHK-1001', clearance: null },
+    { daysAgo: 2, status: 'PENDING_CLEARANCE', checkNum: 'CHK-1002', clearance: null },
+    { daysAgo: 5, status: 'CONFIRMED',          checkNum: 'CHK-1003', clearance: addDays(now, -3) },
+    { daysAgo: 7, status: 'BOUNCED',            checkNum: 'CHK-1004', clearance: null },
+  ]
+
+  const checkPaymentRows: (typeof incomingPayments.$inferInsert)[] = []
+  for (let i = 0; i < Math.min(checkInvRows.length, checkPaymentData.length); i++) {
+    const inv = checkInvRows[i]
+    const meta = checkPaymentData[i]
+    const payDate = addDays(now, -meta.daysAgo)
+    checkPaymentRows.push({
+      invoiceId: inv.invoice_id,
+      customerId: inv.customer_id,
+      amount: inv.amount,
+      paymentMethod: 'CHECK',
+      paymentDate: payDate,
+      referenceNumber: `CHK-REF-${String(i + 1).padStart(6, '0')}`,
+      status: meta.status,
+      confirmedAt: meta.status === 'CONFIRMED' ? meta.clearance : null,
+      checkNumber: meta.checkNum,
+      clearanceDate: meta.clearance ? fmtDate(meta.clearance) : null,
+    })
+  }
+
+  let insertedCheckPayments: (typeof incomingPayments.$inferSelect)[] = []
+  if (checkPaymentRows.length > 0) {
+    insertedCheckPayments = await db.insert(incomingPayments).values(checkPaymentRows).returning()
+  }
+  console.log(`  ${insertedCheckPayments.length} check payments seeded`)
 
   // ── Summary ───────────────────────────────────────────────────────────────
 
