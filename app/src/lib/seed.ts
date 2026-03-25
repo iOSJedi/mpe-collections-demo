@@ -1213,11 +1213,7 @@ export async function seedDatabase() {
 
   console.log('Seeding security deposits for LEASE contracts...')
   type LeaseRow = { customer_id: number; contract_id: number; monthly_amount: string }
-  const leaseRows = await db.execute(sql.raw(`
-    SELECT c.customer_id, c.contract_id, c.monthly_amount
-    FROM contracts_col c
-    WHERE c.type = 'LEASE'
-  `)) as unknown as LeaseRow[]
+  const leaseRows = await db.execute(sql.raw('SELECT c.customer_id, c.contract_id, c.monthly_amount FROM contracts_col c WHERE c.type = \'LEASE\'')) as unknown as LeaseRow[]
 
   const depositInserts = leaseRows.map((row) => ({
     customerId: row.customer_id,
@@ -1232,145 +1228,76 @@ export async function seedDatabase() {
   }
   console.log(`  ${insertedDeposits.length} security deposits seeded`)
 
-  // ── 21. Deposit Forfeitures ───────────────────────────────────────────────
+  // ── 21. Deposit Forfeitures (all scenarios in minimal DB calls) ──────────
 
   console.log('Seeding deposit forfeitures...')
+  // Single query to get all forfeiture candidates
+  type ForfeitCandidate = { invoice_id: number; customer_id: number; amount: string; due_date: string; deposit_id: number; current_balance: string; days_overdue: number }
+  const forfeitCandidates = await db.execute(sql.raw(`SELECT i.invoice_id, i.customer_id, i.amount, i.due_date, sd.deposit_id, sd.current_balance, EXTRACT(DAY FROM NOW() - i.due_date::date)::int as days_overdue FROM invoices_col i INNER JOIN security_deposits_col sd ON sd.customer_id = i.customer_id WHERE i.status IN ('OVERDUE', 'PARTIAL') AND i.due_date < CURRENT_DATE - INTERVAL '90 days' AND sd.current_balance > 0 ORDER BY i.due_date ASC LIMIT 10`)) as unknown as ForfeitCandidate[]
 
-  // Scenario 1: Invoice 150+ days overdue with a deposit — APPROVED forfeiture
-  type OverdueInvoiceRow = { invoice_id: number; customer_id: number; amount: string; due_date: string }
-  const scenario1Rows = await db.execute(sql.raw(`
-    SELECT i.invoice_id, i.customer_id, i.amount, i.due_date
-    FROM invoices_col i
-    INNER JOIN security_deposits_col sd ON sd.customer_id = i.customer_id
-    WHERE i.status IN ('OVERDUE', 'PARTIAL')
-      AND i.due_date < CURRENT_DATE - INTERVAL '150 days'
-    ORDER BY i.due_date ASC
-    LIMIT 1
-  `)) as unknown as OverdueInvoiceRow[]
+  const forfeitInserts: (typeof depositForfeitures.$inferInsert)[] = []
+  const invoiceFlagUpdates: { id: number; flag: string }[] = []
+  const depositBalUpdates: { id: number; newBalance: number }[] = []
 
-  let forfeitureCount = 0
-  if (scenario1Rows.length > 0) {
-    const s1 = scenario1Rows[0]
-    const deposit1 = insertedDeposits.find(d => d.customerId === s1.customer_id)
-    if (deposit1) {
-      const forfeitAmt = Math.min(Number(s1.amount) * 0.5, Number(deposit1.currentBalance))
-      await db.insert(depositForfeitures).values({
-        depositId: deposit1.depositId!,
-        customerId: s1.customer_id,
-        invoiceId: s1.invoice_id,
-        amount: String(forfeitAmt.toFixed(2)),
-        status: 'APPROVED',
-        reviewedBy: 'Maria Santos — Legal & Compliance',
-        reviewedAt: new Date('2026-03-01'),
-        notes: 'Forfeiture approved after 150+ days overdue. Lease agreement clause 12.4 applied.',
-      })
-      forfeitureCount++
+  if (forfeitCandidates.length >= 2) {
+    // Scenario 1: APPROVED forfeiture on oldest invoice
+    const s1 = forfeitCandidates[0]
+    const amt1 = Math.min(Number(s1.amount) * 0.5, Number(s1.current_balance))
+    forfeitInserts.push({ depositId: s1.deposit_id, customerId: s1.customer_id, invoiceId: s1.invoice_id, amount: String(amt1.toFixed(2)), status: 'APPROVED', reviewedBy: 'admin@ayalaland.com', reviewedAt: new Date('2026-03-01'), notes: 'Approved — 150+ days overdue' })
+    invoiceFlagUpdates.push({ id: s1.invoice_id, flag: 'FORFEITED' })
+    depositBalUpdates.push({ id: s1.deposit_id, newBalance: Number(s1.current_balance) - amt1 })
 
-      // Reduce deposit balance
-      const newBalance = Number(deposit1.currentBalance) - forfeitAmt
-      await db.execute(sql.raw(
-        `UPDATE security_deposits_col SET current_balance = ${newBalance.toFixed(2)} WHERE deposit_id = ${deposit1.depositId}`
-      ))
+    // Scenario 2: FLAGGED forfeiture on next invoice (same or different customer)
+    const s2 = forfeitCandidates.find(c => c.invoice_id !== s1.invoice_id) || forfeitCandidates[1]
+    const dep2 = insertedDeposits.find(d => d.customerId === s2.customer_id)
+    if (dep2) {
+      forfeitInserts.push({ depositId: dep2.depositId!, customerId: s2.customer_id, invoiceId: s2.invoice_id, amount: String((Number(s2.amount) * 0.3).toFixed(2)), status: 'FLAGGED', notes: 'Auto-flagged — 90+ days overdue' })
+      invoiceFlagUpdates.push({ id: s2.invoice_id, flag: 'FLAGGED' })
+    }
 
-      // Set flag on invoice
-      await db.execute(sql.raw(
-        `UPDATE invoices_col SET deposit_forfeiture_flag = 'FORFEITED' WHERE invoice_id = ${s1.invoice_id}`
-      ))
-
-      // Scenario 2: Same customer, another invoice 90+ days overdue — FLAGGED forfeiture
-      const scenario2Rows = await db.execute(sql.raw(`
-        SELECT i.invoice_id, i.customer_id, i.amount, i.due_date
-        FROM invoices_col i
-        WHERE i.customer_id = ${s1.customer_id}
-          AND i.status IN ('OVERDUE', 'PARTIAL')
-          AND i.due_date < CURRENT_DATE - INTERVAL '90 days'
-          AND i.invoice_id <> ${s1.invoice_id}
-        ORDER BY i.due_date ASC
-        LIMIT 1
-      `)) as unknown as OverdueInvoiceRow[]
-
-      if (scenario2Rows.length > 0) {
-        const s2 = scenario2Rows[0]
-        await db.insert(depositForfeitures).values({
-          depositId: deposit1.depositId!,
-          customerId: s2.customer_id,
-          invoiceId: s2.invoice_id,
-          amount: String((Number(s2.amount) * 0.3).toFixed(2)),
-          status: 'FLAGGED',
-          notes: 'Flagged for review — 90+ days overdue. Awaiting approval.',
-        })
-        forfeitureCount++
-        await db.execute(sql.raw(
-          `UPDATE invoices_col SET deposit_forfeiture_flag = 'FLAGGED' WHERE invoice_id = ${s2.invoice_id}`
-        ))
-      }
+    // Scenario 4: Full forfeiture on a different customer
+    const s4 = forfeitCandidates.find(c => c.customer_id !== s1.customer_id && c.customer_id !== s2.customer_id)
+    if (s4) {
+      forfeitInserts.push({ depositId: s4.deposit_id, customerId: s4.customer_id, invoiceId: s4.invoice_id, amount: s4.current_balance, status: 'APPROVED', reviewedBy: 'admin@ayalaland.com', reviewedAt: new Date('2026-03-10'), notes: 'Full deposit exhaustion' })
+      invoiceFlagUpdates.push({ id: s4.invoice_id, flag: 'FORFEITED' })
+      depositBalUpdates.push({ id: s4.deposit_id, newBalance: 0 })
     }
   }
 
-  // Scenario 4: Different customer, small deposit — fully forfeit
-  const scenario4Rows = await db.execute(sql.raw(`
-    SELECT i.invoice_id, i.customer_id, i.amount, i.due_date, sd.deposit_id, sd.current_balance
-    FROM invoices_col i
-    INNER JOIN security_deposits_col sd ON sd.customer_id = i.customer_id
-    WHERE i.status IN ('OVERDUE', 'PARTIAL')
-      AND i.due_date < CURRENT_DATE - INTERVAL '90 days'
-      AND sd.current_balance > 0
-      AND sd.customer_id <> ${scenario1Rows.length > 0 ? scenario1Rows[0].customer_id : 0}
-    ORDER BY sd.current_balance ASC
-    LIMIT 1
-  `)) as unknown as (OverdueInvoiceRow & { deposit_id: number; current_balance: string })[]
-
-  if (scenario4Rows.length > 0) {
-    const s4 = scenario4Rows[0]
-    await db.insert(depositForfeitures).values({
-      depositId: s4.deposit_id,
-      customerId: s4.customer_id,
-      invoiceId: s4.invoice_id,
-      amount: String(Number(s4.current_balance).toFixed(2)),
-      status: 'APPROVED',
-      reviewedBy: 'Jose Reyes — Collections Team',
-      reviewedAt: new Date('2026-03-10'),
-      notes: 'Full deposit forfeiture — balance fully exhausted.',
-    })
-    forfeitureCount++
-    await db.execute(sql.raw(
-      `UPDATE security_deposits_col SET current_balance = 0 WHERE deposit_id = ${s4.deposit_id}`
-    ))
-    await db.execute(sql.raw(
-      `UPDATE invoices_col SET deposit_forfeiture_flag = 'FORFEITED' WHERE invoice_id = ${s4.invoice_id}`
-    ))
+  // Batch insert forfeitures
+  if (forfeitInserts.length > 0) await db.insert(depositForfeitures).values(forfeitInserts)
+  // Batch update invoice flags and deposit balances via single SQL calls
+  if (invoiceFlagUpdates.length > 0) {
+    const cases = invoiceFlagUpdates.map(u => `WHEN ${u.id} THEN '${u.flag}'`).join(' ')
+    const ids = invoiceFlagUpdates.map(u => u.id).join(',')
+    await db.execute(sql.raw(`UPDATE invoices_col SET deposit_forfeiture_flag = CASE invoice_id ${cases} END WHERE invoice_id IN (${ids})`))
   }
-
-  console.log(`  ${forfeitureCount} deposit forfeitures seeded`)
+  if (depositBalUpdates.length > 0) {
+    const cases = depositBalUpdates.map(u => `WHEN ${u.id} THEN ${u.newBalance.toFixed(2)}`).join(' ')
+    const ids = depositBalUpdates.map(u => u.id).join(',')
+    await db.execute(sql.raw(`UPDATE security_deposits_col SET current_balance = CASE deposit_id ${cases} END WHERE deposit_id IN (${ids})`))
+  }
+  console.log(`  ${forfeitInserts.length} deposit forfeitures seeded`)
 
   // ── 22. Credit Ledger ─────────────────────────────────────────────────────
 
   console.log('Seeding credit ledger entries...')
 
   type PaidInvRow = { customer_id: number; invoice_id: number }
-  const paidInvRows = await db.execute(sql.raw(`
-    SELECT DISTINCT customer_id, invoice_id
-    FROM invoices_col
-    WHERE status = 'PAID'
-    LIMIT 2
-  `)) as unknown as PaidInvRow[]
+  const paidInvRows = await db.execute(sql.raw('SELECT DISTINCT customer_id, invoice_id FROM invoices_col WHERE status = \'PAID\' LIMIT 2')) as unknown as PaidInvRow[]
 
-  let creditCount = 0
-  for (const row of paidInvRows) {
+  const creditInserts = paidInvRows.map(row => {
     const creditAmt = randInt(3000, 8000)
-    await db.insert(creditLedger).values({
-      customerId: row.customer_id,
-      type: 'CREDIT',
-      amount: String(creditAmt.toFixed(2)),
-      description: 'Overpayment credit applied from prior invoice',
-      invoiceId: row.invoice_id,
-    })
-    await db.execute(sql.raw(
-      `UPDATE customers_col SET credit_balance = credit_balance + ${creditAmt} WHERE customer_id = ${row.customer_id}`
-    ))
-    creditCount++
+    return { customerId: row.customer_id, type: 'CREDIT' as const, amount: String(creditAmt.toFixed(2)), description: 'Overpayment credit applied from prior invoice', invoiceId: row.invoice_id, _amt: creditAmt }
+  })
+  if (creditInserts.length > 0) {
+    await db.insert(creditLedger).values(creditInserts.map(({ _amt, ...rest }) => rest))
+    // Batch update credit balances
+    const cases = creditInserts.map(c => `WHEN ${c.customerId} THEN credit_balance + ${c._amt}`).join(' ')
+    const ids = creditInserts.map(c => c.customerId).join(',')
+    await db.execute(sql.raw(`UPDATE customers_col SET credit_balance = CASE customer_id ${cases} END WHERE customer_id IN (${ids})`))
   }
-  console.log(`  ${creditCount} credit ledger entries seeded`)
+  console.log(`  ${creditInserts.length} credit ledger entries seeded`)
 
   // ── 23. Milestone Templates ───────────────────────────────────────────────
 
@@ -1404,9 +1331,7 @@ export async function seedDatabase() {
 
   console.log('Seeding PO milestones...')
   type PORow = { po_id: number; status: string; total_amount: string }
-  const allPORows = await db.execute(sql.raw(`
-    SELECT po_id, status, total_amount FROM purchase_orders_col
-  `)) as unknown as PORow[]
+  const allPORows = await db.execute(sql.raw('SELECT po_id, status, total_amount FROM purchase_orders_col')) as unknown as PORow[]
 
   const standardTemplate = insertedTemplates[0]
   const standardMilestones = JSON.parse(standardTemplate.milestones as string) as { label: string; percentage: number }[]
@@ -1471,12 +1396,7 @@ export async function seedDatabase() {
 
   console.log('Seeding check payment entries...')
   type CheckInvoiceRow = { invoice_id: number; customer_id: number; amount: string }
-  const checkInvRows = await db.execute(sql.raw(`
-    SELECT invoice_id, customer_id, amount
-    FROM invoices_col
-    WHERE status = 'PAID'
-    LIMIT 4
-  `)) as unknown as CheckInvoiceRow[]
+  const checkInvRows = await db.execute(sql.raw('SELECT invoice_id, customer_id, amount FROM invoices_col WHERE status = \'PAID\' LIMIT 4')) as unknown as CheckInvoiceRow[]
 
   const now = new Date('2026-03-25')
   const checkPaymentData = [
