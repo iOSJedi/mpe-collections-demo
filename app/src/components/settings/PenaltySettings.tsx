@@ -14,6 +14,7 @@ export function PenaltySettings() {
   const [penaltyRatePercent, setPenaltyRatePercent] = useState(2.0)
   const [gracePeriodDays, setGracePeriodDays] = useState(0)
   const [applicationMethod, setApplicationMethod] = useState<'PENALTIES_FIRST' | 'FIFO'>('PENALTIES_FIRST')
+  const [depositForfeitDays, setDepositForfeitDays] = useState(60)
 
   useEffect(() => {
     async function fetchConfig() {
@@ -24,6 +25,7 @@ export function PenaltySettings() {
           setPenaltyRatePercent(data.penaltyRatePercent)
           setGracePeriodDays(data.gracePeriodDays)
           setApplicationMethod(data.applicationMethod)
+          if (data.depositForfeitDays != null) setDepositForfeitDays(data.depositForfeitDays)
         }
       } catch {
         // Use defaults if fetch fails
@@ -42,7 +44,7 @@ export function PenaltySettings() {
       const res = await apiFetch('/api/penalty-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ penaltyRatePercent, applicationMethod, gracePeriodDays }),
+        body: JSON.stringify({ penaltyRatePercent, applicationMethod, gracePeriodDays, depositForfeitDays }),
       })
       if (res.ok) {
         setResult({ ok: true, message: 'Penalty settings saved.' })
@@ -96,6 +98,24 @@ export function PenaltySettings() {
           onChange={e => setGracePeriodDays(parseInt(e.target.value) || 0)}
           className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#003B1F]"
         />
+      </div>
+
+      {/* Deposit Forfeiture */}
+      <div>
+        <label className="block text-xs font-medium text-slate-600 mb-1">
+          Deposit Forfeiture — Auto-flag after (days overdue)
+        </label>
+        <input
+          type="number"
+          min={0}
+          step={1}
+          value={depositForfeitDays}
+          onChange={e => setDepositForfeitDays(parseInt(e.target.value) || 0)}
+          className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#003B1F]"
+        />
+        <p className="text-xs text-slate-400 mt-1">
+          Invoices overdue by this many days will be automatically flagged for deposit forfeiture.
+        </p>
       </div>
 
       {/* Application Method */}
