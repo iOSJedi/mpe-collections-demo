@@ -233,10 +233,36 @@ export async function POST(request: NextRequest) {
 
   try {
     const { analyticsData, count } = await refreshInsights()
+
+    // ── Auto-confirm cleared checks ──
+    console.log('Checking for cleared check payments...')
+    const clearedChecks = await db.execute(
+      sql`SELECT payment_id, invoice_id, customer_id, amount
+          FROM incoming_payments_col
+          WHERE status = 'PENDING_CLEARANCE'
+            AND payment_method = 'CHECK'
+            AND clearance_date <= CURRENT_DATE`
+    )
+    const checkRows = clearedChecks as unknown as { payment_id: number; invoice_id: number; customer_id: number; amount: string }[]
+
+    for (const check of checkRows) {
+      try {
+        // Update status to CONFIRMED
+        await db.execute(
+          sql`UPDATE incoming_payments_col SET status = 'CONFIRMED', confirmed_at = NOW() WHERE payment_id = ${check.payment_id}`
+        )
+        console.log(`  Check payment ${check.payment_id} auto-confirmed`)
+      } catch (err) {
+        console.error(`  Failed to auto-confirm check ${check.payment_id}:`, err)
+      }
+    }
+    console.log(`  ${checkRows.length} check payments processed`)
+
     return NextResponse.json({
       success: true,
       insights_generated: count,
       analytics_summary: analyticsData,
+      checks_auto_confirmed: checkRows.length,
     })
   } catch (error) {
     console.error('Insight refresh failed:', error)
