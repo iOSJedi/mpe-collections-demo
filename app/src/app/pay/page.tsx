@@ -6,7 +6,8 @@ import { PaymentPageData, InvoiceBreakdownItem } from '@/types'
 import { PaymentForm } from '@/components/pay/PaymentForm'
 import { BalanceBreakdown } from '@/components/pay/BalanceBreakdown'
 import { PartialPaymentCalculator } from '@/components/pay/PartialPaymentCalculator'
-import { Loader2, ShieldCheck } from 'lucide-react'
+import { CheckPaymentFlow } from '@/components/pay/CheckPaymentFlow'
+import { Loader2, ShieldCheck, CreditCard, Building2, FileCheck } from 'lucide-react'
 
 interface BreakdownTotals {
   totalPrincipal: number
@@ -26,7 +27,8 @@ interface PaymentState {
   penaltyRate: number
 }
 
-type PortalView = 'breakdown' | 'full' | 'partial'
+type PortalView = 'breakdown' | 'full' | 'partial' | 'check'
+type PaymentMethodChoice = 'card' | 'check'
 
 function PayPage() {
   const searchParams = useSearchParams()
@@ -37,6 +39,7 @@ function PayPage() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<PortalView>('breakdown')
   const [partialAmount, setPartialAmount] = useState<number | null>(null)
+  const [methodChoice, setMethodChoice] = useState<PaymentMethodChoice>('card')
 
   useEffect(() => {
     if (!token) {
@@ -144,8 +147,10 @@ function PayPage() {
               <h1 className="text-lg font-semibold text-[#003B1F]">Payment Portal</h1>
               <p className="text-xs text-slate-500 mt-0.5">
                 {view === 'breakdown' && 'Review your outstanding balance'}
-                {view === 'full' && 'Secure online payment for your invoice'}
+                {view === 'full' && methodChoice === 'card' && 'Secure online payment for your invoice'}
+                {view === 'full' && methodChoice === 'check' && 'Pay by check · Deposit slip required'}
                 {view === 'partial' && 'Choose a partial payment amount'}
+                {view === 'check' && 'Pay by check · Deposit slip required'}
               </p>
             </div>
 
@@ -223,12 +228,65 @@ function PayPage() {
                       >
                         ← Back to balance summary
                       </button>
-                      <PaymentForm
-                        data={getPaymentFormData()}
-                        invoiceId={state.invoiceId}
-                        customerId={state.customerId}
-                        token={token!}
-                      />
+
+                      {/* Payment method selection */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-slate-700">Payment Method</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {/* Card/Bank option */}
+                          <button
+                            onClick={() => setMethodChoice('card')}
+                            className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                              methodChoice === 'card'
+                                ? 'border-[#003B1F] bg-[#003B1F]/5'
+                                : 'border-slate-200 hover:border-slate-300 bg-white'
+                            }`}
+                          >
+                            <CreditCard className={`h-5 w-5 flex-shrink-0 ${methodChoice === 'card' ? 'text-[#003B1F]' : 'text-slate-400'}`} />
+                            <div>
+                              <p className={`text-sm font-medium ${methodChoice === 'card' ? 'text-[#003B1F]' : 'text-slate-700'}`}>
+                                Card / Bank Transfer
+                              </p>
+                              <p className="text-xs text-slate-500">Credit card or BPI online transfer</p>
+                            </div>
+                          </button>
+
+                          {/* Check option */}
+                          <button
+                            onClick={() => setMethodChoice('check')}
+                            className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                              methodChoice === 'check'
+                                ? 'border-[#003B1F] bg-[#003B1F]/5'
+                                : 'border-slate-200 hover:border-slate-300 bg-white'
+                            }`}
+                          >
+                            <FileCheck className={`h-5 w-5 flex-shrink-0 ${methodChoice === 'check' ? 'text-[#003B1F]' : 'text-slate-400'}`} />
+                            <div>
+                              <p className={`text-sm font-medium ${methodChoice === 'check' ? 'text-[#003B1F]' : 'text-slate-700'}`}>
+                                Check Payment
+                              </p>
+                              <p className="text-xs text-slate-500">Deposit check + upload slip · 3-day clearing</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Render card/bank form or check flow */}
+                      {methodChoice === 'card' ? (
+                        <PaymentForm
+                          data={getPaymentFormData()}
+                          invoiceId={state.invoiceId}
+                          customerId={state.customerId}
+                          token={token!}
+                        />
+                      ) : (
+                        <CheckPaymentFlow
+                          customerId={state.customerId}
+                          invoiceId={state.invoiceId}
+                          amount={getPaymentFormData().balance_remaining}
+                          onComplete={() => setView('breakdown')}
+                        />
+                      )}
                     </div>
                   )}
                 </>
