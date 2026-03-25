@@ -1,29 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
-import { invoices, incomingPayments, penaltyConfig, penaltyLedger, paymentAllocations } from '@/db/schema'
+import { invoices, incomingPayments, penaltyConfig, penaltyLedger, paymentAllocations, creditLedger } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { stripe } from '@/lib/stripe'
 import { calculateAllocation } from '@/lib/payment-allocation'
+import { addBusinessDays } from '@/lib/utils'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { paymentIntentId, invoiceId, customerId, amount } = body
+    const { paymentIntentId, invoiceId, customerId, amount, paymentMethod = 'CARD', checkNumber } = body
 
-    if (!paymentIntentId) {
-      return NextResponse.json({ error: 'paymentIntentId is required' }, { status: 400 })
+    if (paymentMethod !== 'CHECK') {
+      if (!paymentIntentId) {
+        return NextResponse.json({ error: 'paymentIntentId is required for card payments' }, { status: 400 })
+      }
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+      if (paymentIntent.status !== 'succeeded') {
+        return NextResponse.json(
+          { error: `Payment not succeeded. Status: ${paymentIntent.status}` },
+          { status: 400 }
+        )
+      }
     }
+
     if (!amount || typeof amount !== 'number' || amount <= 0) {
       return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
-    }
-
-    // Verify Stripe payment
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
-    if (paymentIntent.status !== 'succeeded') {
-      return NextResponse.json(
-        { error: `Payment not succeeded. Status: ${paymentIntent.status}` },
-        { status: 400 }
-      )
     }
 
     // Determine customerId from invoiceId if not provided
@@ -34,6 +36,26 @@ export async function POST(request: NextRequest) {
     }
     if (!cid) {
       return NextResponse.json({ error: 'Could not determine customer' }, { status: 400 })
+    }
+
+    // CHECK payment — create as PENDING_CLEARANCE and return early (no allocation yet)
+    if (paymentMethod === 'CHECK') {
+      const clearanceDate = addBusinessDays(new Date(), 3)
+      const [payment] = await db.insert(incomingPayments).values({
+        invoiceId: invoiceId || null,
+        customerId: cid,
+        amount: String(amount),
+        paymentMethod: 'CHECK',
+        checkNumber: checkNumber || null,
+        clearanceDate: clearanceDate.toISOString().split('T')[0],
+        status: 'PENDING_CLEARANCE',
+      }).returning()
+      return NextResponse.json({
+        success: true,
+        paymentId: payment.paymentId,
+        status: 'PENDING_CLEARANCE',
+        clearanceDate: clearanceDate.toISOString().split('T')[0],
+      })
     }
 
     // Load config
@@ -148,10 +170,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check for overpayment — create credit ledger entry
+    let creditCreated = null
+    if (allocation.excessAmount > 0) {
+      await db.insert(creditLedger).values({
+        customerId: cid,
+        type: 'CREDIT',
+        amount: String(allocation.excessAmount),
+        description: `Overpayment — ₱${allocation.excessAmount.toFixed(2)} excess`,
+        paymentId: payment.paymentId,
+      })
+      await db.execute(
+        sql`UPDATE customers_col SET credit_balance = credit_balance + ${allocation.excessAmount} WHERE customer_id = ${cid}`
+      )
+      creditCreated = { amount: allocation.excessAmount }
+    }
+
     return NextResponse.json({
       success: true,
       paymentId: payment.paymentId,
       allocation: allocation,
+      creditCreated,
     })
   } catch (error) {
     console.error('Failed to confirm payment:', error)
