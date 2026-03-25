@@ -218,17 +218,7 @@ export async function seedDatabase() {
 
   console.log('Truncating all tables...')
   // Single TRUNCATE statement for all tables — CASCADE handles FK deps, RESTART IDENTITY resets serials.
-  await db.execute(sql.raw(`
-    TRUNCATE TABLE
-      credit_ledger_col, security_deposits_col, deposit_forfeitures_col, milestone_templates_col, po_milestones_col,
-      penalty_config_col, penalty_ledger_col, payment_allocations_col, ap_workflow_events_col,
-      cash_flow_forecasts_col, escalations_col, documents_col, insight_cards_col,
-      payment_patterns_col, credit_risk_scores_col, delinquency_scores_col, payer_segments_col,
-      three_way_matches_col, outgoing_payments_col, supplier_invoices_col, goods_receipts_col,
-      purchase_orders_col, suppliers_col, incoming_payments_col, qr_codes_col,
-      invoices_col, contracts_col, customers_col
-    RESTART IDENTITY CASCADE
-  `))
+  await db.execute(sql.raw('TRUNCATE TABLE credit_ledger_col, security_deposits_col, deposit_forfeitures_col, milestone_templates_col, po_milestones_col, penalty_config_col, penalty_ledger_col, payment_allocations_col, ap_workflow_events_col, cash_flow_forecasts_col, escalations_col, documents_col, insight_cards_col, payment_patterns_col, credit_risk_scores_col, delinquency_scores_col, payer_segments_col, three_way_matches_col, outgoing_payments_col, supplier_invoices_col, goods_receipts_col, purchase_orders_col, suppliers_col, incoming_payments_col, qr_codes_col, invoices_col, contracts_col, customers_col RESTART IDENTITY CASCADE'))
   console.log('  Tables truncated\n')
 
   // ── 1. INSERT CUSTOMERS ────────────────────────────────────────────────────
