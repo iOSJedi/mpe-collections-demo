@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAppDispatch, useAppSelector } from '@/store'
 import { setSelectedSupplier, setSelectedPo } from '@/store/slices/emulatorSlice'
 import { apiFetch } from '@/lib/api'
-import type { SupplierSummary, POSummary, ClaimSummary, WorkflowEvent, WorkflowStatus } from '@/types'
+import type { SupplierSummary, POSummary, ClaimSummary, WorkflowEvent, WorkflowStatus, POMilestone } from '@/types'
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -152,6 +152,11 @@ export function SupplierEmulator() {
 
   const [timelineClaimId, setTimelineClaimId] = useState<number | null>(null)
 
+  // Milestones for selected PO
+  const [milestones, setMilestones] = useState<POMilestone[]>([])
+  const [milestonesLoading, setMilestonesLoading] = useState(false)
+  const [completingId, setCompletingId] = useState<number | null>(null)
+
   // Fetch suppliers on mount
   const fetchSuppliers = useCallback(() => {
     setSuppliersLoading(true)
@@ -204,6 +209,26 @@ export function SupplierEmulator() {
     fetchClaims()
   }, [fetchClaims])
 
+  // Fetch milestones when PO selected
+  const fetchMilestones = useCallback(() => {
+    if (!selectedPoId) {
+      setMilestones([])
+      return
+    }
+    setMilestonesLoading(true)
+    apiFetch(`/api/payable/${selectedPoId}/milestones`)
+      .then((r) => r.json())
+      .then((data) => {
+        setMilestones(Array.isArray(data) ? data : [])
+        setMilestonesLoading(false)
+      })
+      .catch(() => setMilestonesLoading(false))
+  }, [selectedPoId])
+
+  useEffect(() => {
+    fetchMilestones()
+  }, [fetchMilestones])
+
   const selectedPo = pos.find((p) => p.po_id === selectedPoId) ?? null
 
   function showMessage(text: string, ok: boolean) {
@@ -236,6 +261,29 @@ export function SupplierEmulator() {
       showMessage('Network error.', false)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleMarkComplete(milestoneId: number) {
+    if (!selectedPoId) return
+    setCompletingId(milestoneId)
+    try {
+      const res = await apiFetch(`/api/payable/${selectedPoId}/milestones/${milestoneId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) {
+        showMessage('Milestone marked as complete.', true)
+        fetchMilestones()
+      } else {
+        const err = await res.json()
+        showMessage(err.error ?? 'Failed to mark complete.', false)
+      }
+    } catch {
+      showMessage('Network error.', false)
+    } finally {
+      setCompletingId(null)
     }
   }
 
@@ -318,6 +366,75 @@ export function SupplierEmulator() {
           >
             {submitting ? 'Submitting…' : 'Submit Claim / Invoice'}
           </button>
+        </div>
+      )}
+
+      {/* Milestones for selected PO */}
+      {selectedPoId && (
+        <div className="px-3 py-2.5 border-b border-border shrink-0">
+          <p className="text-xs font-semibold text-foreground mb-1.5">PO Milestones</p>
+          {milestonesLoading ? (
+            <p className="text-xs text-muted-foreground">Loading milestones…</p>
+          ) : milestones.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No milestones assigned to this PO.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {/* Mini progress bar */}
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                {milestones.map((m) => {
+                  const color =
+                    m.status === 'PAID'
+                      ? 'bg-green-500'
+                      : m.status === 'COMPLETED'
+                      ? 'bg-amber-400'
+                      : 'bg-gray-300'
+                  return (
+                    <div
+                      key={m.milestoneId}
+                      className={`${color} h-full`}
+                      style={{ width: `${m.percentage}%` }}
+                      title={`${m.label}: ${m.status}`}
+                    />
+                  )
+                })}
+              </div>
+              {milestones.map((m, idx) => {
+                const isNextPending = m.status === 'PENDING' && milestones.slice(0, idx).every((prev) => prev.status !== 'PENDING')
+                const statusColor =
+                  m.status === 'PAID'
+                    ? 'text-green-600'
+                    : m.status === 'COMPLETED'
+                    ? 'text-amber-600'
+                    : 'text-gray-500'
+                const dot =
+                  m.status === 'PAID'
+                    ? 'bg-green-500'
+                    : m.status === 'COMPLETED'
+                    ? 'bg-amber-400'
+                    : 'bg-gray-300'
+                return (
+                  <div key={m.milestoneId} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
+                      <span className="text-[10px] text-foreground truncate">{m.label}</span>
+                      <span className={`text-[10px] font-medium shrink-0 ${statusColor}`}>
+                        {m.status}
+                      </span>
+                    </div>
+                    {isNextPending && (
+                      <button
+                        onClick={() => handleMarkComplete(m.milestoneId)}
+                        disabled={completingId === m.milestoneId}
+                        className="shrink-0 rounded border border-[#C5A930] text-[#C5A930] px-1.5 py-0.5 text-[10px] font-medium hover:bg-[#C5A930]/10 disabled:opacity-50 transition-colors"
+                      >
+                        {completingId === m.milestoneId ? 'Saving…' : 'Mark Complete'}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

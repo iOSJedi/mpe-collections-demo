@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SupplierDetail as SupplierDetailType } from '@/types'
 import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
+import { MilestoneProgress } from './MilestoneProgress'
 
 const TYPE_BADGE: Record<string, string> = {
   DIRECT: 'bg-blue-100 text-blue-800',
@@ -60,6 +61,7 @@ export function SupplierDetail({ supplierId }: Props) {
   const [supplier, setSupplier] = useState<SupplierDetailType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expandedPoId, setExpandedPoId] = useState<number | null>(null)
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -157,32 +159,48 @@ export function SupplierDetail({ supplierId }: Props) {
                 <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Issued Date</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600 whitespace-nowrap">Expected Delivery</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-100">
               {supplier.purchase_orders.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-slate-400">No purchase orders found.</td>
+                  <td colSpan={7} className="text-center py-8 text-slate-400">No purchase orders found.</td>
                 </tr>
               )}
               {supplier.purchase_orders.map((po) => (
-                <tr key={po.po_id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">{po.po_number}</td>
-                  <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{po.project_name}</td>
-                  <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">
-                    {formatCurrency(po.total_amount)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{po.issued_date}</td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
-                    {(po as { expected_delivery?: string | null }).expected_delivery ?? <span className="text-slate-300">—</span>}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <Badge
-                      label={po.status}
-                      className={PO_STATUS_BADGE[po.status] ?? 'bg-slate-100 text-slate-700'}
-                    />
-                  </td>
-                </tr>
+                <Fragment key={po.po_id}>
+                  <tr
+                    className="hover:bg-slate-50 cursor-pointer"
+                    onClick={() => setExpandedPoId(expandedPoId === po.po_id ? null : po.po_id)}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">{po.po_number}</td>
+                    <td className="px-4 py-3 text-slate-700 max-w-[200px] truncate">{po.project_name}</td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">
+                      {formatCurrency(po.total_amount)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{po.issued_date}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                      {(po as { expected_delivery?: string | null }).expected_delivery ?? <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Badge
+                        label={po.status}
+                        className={PO_STATUS_BADGE[po.status] ?? 'bg-slate-100 text-slate-700'}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                      {expandedPoId === po.po_id ? '▲ Hide' : '▼ Milestones'}
+                    </td>
+                  </tr>
+                  {expandedPoId === po.po_id && (
+                    <tr>
+                      <td colSpan={7} className="px-6 pb-4 bg-slate-50">
+                        <MilestoneProgress poId={po.po_id} poTotal={po.total_amount} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
