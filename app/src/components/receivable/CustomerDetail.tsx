@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { InvoiceBreakdown } from './InvoiceBreakdown'
 import { PaymentAllocations } from './PaymentAllocations'
+import { CreditBalanceCard } from './CreditBalanceCard'
 
 // ─── Badge helpers ─────────────────────────────────────────────────────────
 
@@ -274,6 +275,8 @@ export function CustomerDetail({ customerId }: { customerId: number }) {
 
         {/* Risk sidebar */}
         <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
+          <CreditBalanceCard customerId={customerId} />
+
           <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Risk & Segments</h2>
 
           {/* Delinquency score */}
