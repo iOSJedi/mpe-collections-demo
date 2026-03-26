@@ -9,6 +9,31 @@ import {
 // Aliases for tables used in new seed steps (the rest use `schema.*`)
 const { invoices, incomingPayments, supplierInvoices, purchaseOrders, suppliers } = schema
 
+// ─── Chunked insert helper (proxy has ~200 param limit) ──────────────────────
+
+async function chunkedInsert<T extends Record<string, unknown>>(
+  table: Parameters<typeof db.insert>[0],
+  rows: T[],
+  chunkSize = 10,
+): Promise<void> {
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    await (db.insert(table) as any).values(rows.slice(i, i + chunkSize))
+  }
+}
+
+async function chunkedInsertReturning<T extends Record<string, unknown>>(
+  table: Parameters<typeof db.insert>[0],
+  rows: T[],
+  chunkSize = 10,
+): Promise<any[]> {
+  const results: any[] = []
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = await (db.insert(table) as any).values(rows.slice(i, i + chunkSize)).returning()
+    results.push(...chunk)
+  }
+  return results
+}
+
 // ─── Seeded PRNG (Mulberry32) ─────────────────────────────────────────────────
 
 let _seed = 42
@@ -295,7 +320,7 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedContracts = await db.insert(schema.contracts).values(contractRows).returning()
+  const insertedContracts = await chunkedInsertReturning(schema.contracts, contractRows)
   console.log(`  Inserted ${insertedContracts.length} contracts`)
 
   // ── 3. INSERT INVOICES (3-6 months per contract, Oct 2025 – Mar 2026) ──────
@@ -384,7 +409,7 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedInvoices = await db.insert(schema.invoices).values(invoiceRows).returning()
+  const insertedInvoices = await chunkedInsertReturning(schema.invoices, invoiceRows)
   console.log(`  Inserted ${insertedInvoices.length} invoices`)
 
   // ── 4. INSERT INCOMING PAYMENTS (for PAID and PARTIAL invoices) ───────────
@@ -418,7 +443,7 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedPayments = await db.insert(schema.incomingPayments).values(paymentRows).returning()
+  const insertedPayments = await chunkedInsertReturning(schema.incomingPayments, paymentRows)
   console.log(`  Inserted ${insertedPayments.length} incoming payments`)
 
   // ── 5. INSERT SUPPLIERS ────────────────────────────────────────────────────
@@ -522,7 +547,7 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedGRs = await db.insert(schema.goodsReceipts).values(grRows).returning()
+  const insertedGRs = await chunkedInsertReturning(schema.goodsReceipts, grRows)
   console.log(`  Inserted ${insertedGRs.length} goods receipts`)
 
   // ── 8. INSERT SUPPLIER INVOICES ───────────────────────────────────────────
@@ -575,7 +600,7 @@ export async function seedDatabase() {
     siCounter++
   }
 
-  const insertedSIs = await db.insert(schema.supplierInvoices).values(siRows).returning()
+  const insertedSIs = await chunkedInsertReturning(schema.supplierInvoices, siRows)
   console.log(`  Inserted ${insertedSIs.length} supplier invoices`)
 
   // ── 9. INSERT OUTGOING PAYMENTS (for paid supplier invoices) ─────────────
@@ -603,7 +628,7 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedOPs = await db.insert(schema.outgoingPayments).values(opRows).returning()
+  const insertedOPs = await chunkedInsertReturning(schema.outgoingPayments, opRows)
   console.log(`  Inserted ${insertedOPs.length} outgoing payments`)
 
   // ── 10. INSERT 3-WAY MATCHES ──────────────────────────────────────────────
@@ -690,7 +715,7 @@ export async function seedDatabase() {
     twmCounter++
   }
 
-  const insertedTWMs = await db.insert(schema.threeWayMatches).values(twmRows).returning()
+  const insertedTWMs = await chunkedInsertReturning(schema.threeWayMatches, twmRows)
   console.log(`  Inserted ${insertedTWMs.length} 3-way matches`)
 
   // ── 11. INSERT ML SCORES ──────────────────────────────────────────────────
@@ -711,7 +736,7 @@ export async function seedDatabase() {
       clusterId: segmentIdx,
     }
   })
-  await db.insert(schema.payerSegments).values(payerSegRows)
+  await chunkedInsert(schema.payerSegments, payerSegRows)
   console.log(`  Inserted ${payerSegRows.length} payer segments`)
 
   // Delinquency scores
@@ -737,7 +762,7 @@ export async function seedDatabase() {
       ]),
     }
   })
-  await db.insert(schema.delinquencyScores).values(delinqRows)
+  await chunkedInsert(schema.delinquencyScores, delinqRows)
   console.log(`  Inserted ${delinqRows.length} delinquency scores`)
 
   // Credit risk scores
@@ -762,7 +787,7 @@ export async function seedDatabase() {
       paymentTrend: pickWeighted(['IMPROVING', 'STABLE', 'DETERIORATING'], [25, 50, 25]),
     }
   })
-  await db.insert(schema.creditRiskScores).values(creditRiskRows)
+  await chunkedInsert(schema.creditRiskScores, creditRiskRows)
   console.log(`  Inserted ${creditRiskRows.length} credit risk scores`)
 
   // Payment patterns
@@ -776,7 +801,7 @@ export async function seedDatabase() {
       partialPaymentRate: String((profile * 8 + randInt(0, 10)).toFixed(2)),
     }
   })
-  await db.insert(schema.paymentPatterns).values(paymentPatternRows)
+  await chunkedInsert(schema.paymentPatterns, paymentPatternRows)
   console.log(`  Inserted ${paymentPatternRows.length} payment patterns`)
 
   // ── 12. INSERT INSIGHT CARDS ──────────────────────────────────────────────
