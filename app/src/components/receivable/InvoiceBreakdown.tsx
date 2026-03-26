@@ -49,7 +49,7 @@ function InvoiceCard({ inv }: { inv: InvoiceBreakdownItem }) {
   const borderColor = agingBorderColor(inv.daysOverdue)
   const monthsCount = inv.penalties.length
   const penaltyRate =
-    inv.penalties.length > 0 ? `${(inv.penalties[0].penaltyRate * 100).toFixed(1)}%` : null
+    inv.penalties.length > 0 ? `${Number(inv.penalties[0].penaltyRate).toFixed(1)}%` : null
   const penaltyLabel =
     monthsCount > 0 && penaltyRate
       ? `${monthsCount} mo × ${penaltyRate}`
