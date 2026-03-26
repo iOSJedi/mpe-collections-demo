@@ -99,6 +99,15 @@ export function Sidebar() {
   const [showSettings, setShowSettings] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [seedResult, setSeedResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [seedProgress, setSeedProgress] = useState<{ current: number; total: number; label: string } | null>(null)
+
+  const SEED_STAGES = [
+    { stage: 1, label: 'Core data (customers, invoices, payments)' },
+    { stage: 2, label: 'Suppliers & purchase orders' },
+    { stage: 3, label: 'ML scores & documents' },
+    { stage: 4, label: 'Penalties & AP workflow' },
+    { stage: 5, label: 'Deposits, credits, milestones & checks' },
+  ]
 
   // Subscribe to Firebase RTDB for open escalation notifications
   useEffect(() => {
@@ -293,16 +302,26 @@ export function Sidebar() {
                   onClick={async () => {
                     if (seeding) return
                     setSeedResult(null)
+                    setSeedProgress(null)
                     setSeeding(true)
                     try {
-                      const res = await apiFetch('/api/seed', { method: 'POST' })
-                      if (!res.ok) {
-                        const data = await res.json()
-                        setSeedResult({ ok: false, message: data.error || 'Seed failed' })
-                      } else {
-                        setSeedResult({ ok: true, message: 'Data re-seeded successfully. Refresh the page to see new data.' })
+                      setSeedProgress({ current: 0, total: SEED_STAGES.length, label: 'Starting...' })
+                      for (const s of SEED_STAGES) {
+                        setSeedProgress({ current: s.stage, total: SEED_STAGES.length, label: s.label })
+                        const res = await apiFetch('/api/seed', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ stage: s.stage }),
+                        })
+                        if (!res.ok) {
+                          const data = await res.json()
+                          throw new Error(data.error || `Stage ${s.stage} failed`)
+                        }
                       }
+                      setSeedProgress(null)
+                      setSeedResult({ ok: true, message: 'Data re-seeded successfully. Refresh the page to see new data.' })
                     } catch (err) {
+                      setSeedProgress(null)
                       setSeedResult({ ok: false, message: err instanceof Error ? err.message : 'Unknown error' })
                     } finally {
                       setSeeding(false)
@@ -324,6 +343,23 @@ export function Sidebar() {
                     </>
                   )}
                 </button>
+                {seedProgress && (
+                  <div className="mt-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="truncate pr-2">{seedProgress.label}</span>
+                      <span className="shrink-0">{seedProgress.current}/{seedProgress.total}</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.round((seedProgress.current / seedProgress.total) * 100)}%`,
+                          backgroundColor: '#003B1F',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               {seedResult && (
                 <div className={cn(

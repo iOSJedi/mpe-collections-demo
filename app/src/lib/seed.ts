@@ -14,7 +14,7 @@ const { invoices, incomingPayments, supplierInvoices, purchaseOrders, suppliers 
 async function chunkedInsert<T extends Record<string, unknown>>(
   table: Parameters<typeof db.insert>[0],
   rows: T[],
-  chunkSize = 10,
+  chunkSize = 20,
 ): Promise<void> {
   for (let i = 0; i < rows.length; i += chunkSize) {
     await (db.insert(table) as any).values(rows.slice(i, i + chunkSize))
@@ -24,7 +24,7 @@ async function chunkedInsert<T extends Record<string, unknown>>(
 async function chunkedInsertReturning<T extends Record<string, unknown>>(
   table: Parameters<typeof db.insert>[0],
   rows: T[],
-  chunkSize = 10,
+  chunkSize = 20,
 ): Promise<any[]> {
   const results: any[] = []
   for (let i = 0; i < rows.length; i += chunkSize) {
@@ -37,6 +37,7 @@ async function chunkedInsertReturning<T extends Record<string, unknown>>(
 // ─── Seeded PRNG (Mulberry32) ─────────────────────────────────────────────────
 
 let _seed = 42
+function resetSeed(s: number) { _seed = s }
 function rand(): number {
   _seed |= 0
   _seed = (_seed + 0x6d2b79f5) | 0
@@ -214,37 +215,31 @@ const BILLING_MONTHS = [
   { year: 2026, month: 3 },
 ]
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── PRNG seed offsets per stage (ensures each stage starts at a fixed state) ─
 
-export async function seedDatabase() {
-  console.log('🌱 Starting Ayala Land Payments Portal seed...\n')
+const STAGE_SEEDS = {
+  1: 42,
+  2: 1000,
+  3: 2000,
+  4: 3000,
+  5: 4000,
+}
+
+// ─── Stage 1: Truncate, schema migration, customers, contracts, invoices, payments ─
+
+export async function seedStage1() {
+  resetSeed(STAGE_SEEDS[1])
+  console.log('Stage 1: truncate + customers + contracts + invoices + payments')
 
   // ── 0. TRUNCATE ALL TABLES (idempotent re-run) ─────────────────────────────
 
-  // Ensure supplier_invoices_col has created_at (missing in original DDL)
-  await db.execute(sql.raw(`
-    ALTER TABLE supplier_invoices_col
-    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()
-  `))
-
-  // Ensure new columns exist (idempotent)
-  await db.execute(sql.raw(`
-    ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS total_penalties DECIMAL(12,2) NOT NULL DEFAULT 0;
-    ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS penalties_paid DECIMAL(12,2) NOT NULL DEFAULT 0;
-    ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS workflow_status VARCHAR(30) NOT NULL DEFAULT 'SUBMITTED';
-    ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS claim_document_url TEXT;
-    ALTER TABLE incoming_payments_col ALTER COLUMN invoice_id DROP NOT NULL;
-    ALTER TABLE customers_col ADD COLUMN IF NOT EXISTS credit_balance DECIMAL(12,2) NOT NULL DEFAULT 0;
-    ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS deposit_forfeiture_flag VARCHAR(20);
-    ALTER TABLE incoming_payments_col ADD COLUMN IF NOT EXISTS check_number VARCHAR(50);
-    ALTER TABLE incoming_payments_col ADD COLUMN IF NOT EXISTS clearance_date DATE;
-    ALTER TABLE penalty_config_col ADD COLUMN IF NOT EXISTS deposit_forfeit_days INTEGER NOT NULL DEFAULT 90;
-  `))
+  // Ensure columns exist (idempotent ALTER TABLEs)
+  await db.execute(sql.raw('ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()'))
+  await db.execute(sql.raw('ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS total_penalties DECIMAL(12,2) NOT NULL DEFAULT 0; ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS penalties_paid DECIMAL(12,2) NOT NULL DEFAULT 0; ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS workflow_status VARCHAR(30) NOT NULL DEFAULT \'SUBMITTED\'; ALTER TABLE supplier_invoices_col ADD COLUMN IF NOT EXISTS claim_document_url TEXT; ALTER TABLE incoming_payments_col ALTER COLUMN invoice_id DROP NOT NULL; ALTER TABLE customers_col ADD COLUMN IF NOT EXISTS credit_balance DECIMAL(12,2) NOT NULL DEFAULT 0; ALTER TABLE invoices_col ADD COLUMN IF NOT EXISTS deposit_forfeiture_flag VARCHAR(20); ALTER TABLE incoming_payments_col ADD COLUMN IF NOT EXISTS check_number VARCHAR(50); ALTER TABLE incoming_payments_col ADD COLUMN IF NOT EXISTS clearance_date DATE; ALTER TABLE penalty_config_col ADD COLUMN IF NOT EXISTS deposit_forfeit_days INTEGER NOT NULL DEFAULT 90'))
 
   console.log('Truncating all tables...')
-  // Single TRUNCATE statement for all tables — CASCADE handles FK deps, RESTART IDENTITY resets serials.
   await db.execute(sql.raw('TRUNCATE TABLE credit_ledger_col, security_deposits_col, deposit_forfeitures_col, milestone_templates_col, po_milestones_col, penalty_config_col, penalty_ledger_col, payment_allocations_col, ap_workflow_events_col, cash_flow_forecasts_col, escalations_col, documents_col, insight_cards_col, payment_patterns_col, credit_risk_scores_col, delinquency_scores_col, payer_segments_col, three_way_matches_col, outgoing_payments_col, supplier_invoices_col, goods_receipts_col, purchase_orders_col, suppliers_col, incoming_payments_col, qr_codes_col, invoices_col, contracts_col, customers_col RESTART IDENTITY CASCADE'))
-  console.log('  Tables truncated\n')
+  console.log('  Tables truncated')
 
   // ── 1. INSERT CUSTOMERS ────────────────────────────────────────────────────
 
@@ -292,13 +287,13 @@ export async function seedDatabase() {
 
   for (let ci = 0; ci < allCustomers.length; ci++) {
     const cust = allCustomers[ci]
-    const numContracts = ci < 10 ? 2 : 1 // First 10 customers get 2 contracts
+    const numContracts = ci < 10 ? 2 : 1
     const isTenant = cust.type === 'TENANT'
     const tenantSpec = isTenant ? TENANT_SPECS[ci] : null
 
     for (let k = 0; k < numContracts; k++) {
       const contractNum = `ALI-CTR-${String(contractCounter).padStart(5, '0')}`
-      const startDate = new Date(2023, randInt(0, 3), 1) // Jan-Apr 2023
+      const startDate = new Date(2023, randInt(0, 3), 1)
       const endDate = addMonths(startDate, randInt(24, 60))
       const monthly = isTenant && tenantSpec
         ? randInt(tenantSpec.monthlyMin, tenantSpec.monthlyMax)
@@ -323,21 +318,19 @@ export async function seedDatabase() {
   const insertedContracts = await chunkedInsertReturning(schema.contracts, contractRows)
   console.log(`  Inserted ${insertedContracts.length} contracts`)
 
-  // ── 3. INSERT INVOICES (3-6 months per contract, Oct 2025 – Mar 2026) ──────
+  // ── 3. INSERT INVOICES ─────────────────────────────────────────────────────
 
   console.log('Inserting invoices...')
   const invoiceRows: (typeof schema.invoices.$inferInsert)[] = []
   let invoiceCounter = 1
 
-  // Payment behaviour profiles — assigned per customer
-  // 0=always_on_time  1=mostly_on_time  2=sometimes_late  3=often_late  4=delinquent
-  const paymentProfiles = allCustomers.map((_, i) => {
+  const paymentProfiles = allCustomers.map(() => {
     const r = rand()
-    if (r < 0.35) return 0      // 35% always on time
-    if (r < 0.60) return 1      // 25% mostly on time
-    if (r < 0.78) return 2      // 18% sometimes late
-    if (r < 0.90) return 3      // 12% often late
-    return 4                     // 10% delinquent
+    if (r < 0.35) return 0
+    if (r < 0.60) return 1
+    if (r < 0.78) return 2
+    if (r < 0.90) return 3
+    return 4
   })
 
   for (const contract of insertedContracts) {
@@ -347,11 +340,10 @@ export async function seedDatabase() {
     for (const { year, month } of monthsSlice) {
       const periodStart = startOfMonth(year, month)
       const periodEnd = endOfMonth(year, month)
-      const dueDate = addDays(periodEnd, 15) // Due 15th of following month
+      const dueDate = addDays(periodEnd, 15)
       const amount = Number(contract.monthlyAmount)
       const invoiceNum = `INV-${year}${String(month).padStart(2, '0')}-${String(invoiceCounter).padStart(5, '0')}`
 
-      // Determine status based on profile and due date
       const custIndex = allCustomers.findIndex(c => c.customerId === contract.customerId)
       const profile = paymentProfiles[custIndex] ?? 0
       const now = new Date('2026-03-10')
@@ -361,33 +353,26 @@ export async function seedDatabase() {
       let balanceRemaining: number
 
       if (!isPast) {
-        // Future invoice — always PENDING
         status = 'PENDING'
         balanceRemaining = amount
       } else {
-        // Past invoice — use profile to determine status
         const r = rand()
         if (profile === 0) {
-          // Always on time
           status = 'PAID'
           balanceRemaining = 0
         } else if (profile === 1) {
-          // Mostly on time
           if (r < 0.85) { status = 'PAID'; balanceRemaining = 0 }
           else if (r < 0.95) { status = 'PARTIAL'; balanceRemaining = amount * randInt(10, 40) / 100 }
           else { status = 'OVERDUE'; balanceRemaining = amount }
         } else if (profile === 2) {
-          // Sometimes late
           if (r < 0.65) { status = 'PAID'; balanceRemaining = 0 }
           else if (r < 0.82) { status = 'PARTIAL'; balanceRemaining = amount * randInt(20, 60) / 100 }
           else { status = 'OVERDUE'; balanceRemaining = amount }
         } else if (profile === 3) {
-          // Often late
           if (r < 0.40) { status = 'PAID'; balanceRemaining = 0 }
           else if (r < 0.65) { status = 'PARTIAL'; balanceRemaining = amount * randInt(30, 70) / 100 }
           else { status = 'OVERDUE'; balanceRemaining = amount }
         } else {
-          // Delinquent
           if (r < 0.15) { status = 'PAID'; balanceRemaining = 0 }
           else if (r < 0.35) { status = 'PARTIAL'; balanceRemaining = amount * randInt(50, 90) / 100 }
           else { status = 'OVERDUE'; balanceRemaining = amount }
@@ -412,7 +397,7 @@ export async function seedDatabase() {
   const insertedInvoices = await chunkedInsertReturning(schema.invoices, invoiceRows)
   console.log(`  Inserted ${insertedInvoices.length} invoices`)
 
-  // ── 4. INSERT INCOMING PAYMENTS (for PAID and PARTIAL invoices) ───────────
+  // ── 4. INSERT INCOMING PAYMENTS ───────────────────────────────────────────
 
   console.log('Inserting incoming payments...')
   const paymentRows: (typeof schema.incomingPayments.$inferInsert)[] = []
@@ -443,13 +428,22 @@ export async function seedDatabase() {
     }
   }
 
-  const insertedPayments = await chunkedInsertReturning(schema.incomingPayments, paymentRows)
-  console.log(`  Inserted ${insertedPayments.length} incoming payments`)
+  await chunkedInsertReturning(schema.incomingPayments, paymentRows)
+  console.log(`  Inserted ${paymentRows.length} incoming payments`)
+
+  console.log('Stage 1 complete')
+}
+
+// ─── Stage 2: Suppliers, POs, goods receipts, supplier invoices, outgoing payments, 3-way matches ─
+
+export async function seedStage2() {
+  resetSeed(STAGE_SEEDS[2])
+  console.log('Stage 2: suppliers + POs + GRs + supplier invoices + outgoing payments + 3-way matches')
 
   // ── 5. INSERT SUPPLIERS ────────────────────────────────────────────────────
 
   console.log('Inserting 20 suppliers...')
-  const supplierRows = SUPPLIER_SPECS.map((s, i) => ({
+  const supplierRows = SUPPLIER_SPECS.map((s) => ({
     name: s.name,
     category: s.category,
     type: s.type,
@@ -469,24 +463,21 @@ export async function seedDatabase() {
   const insertedSuppliers = await db.insert(schema.suppliers).values(supplierRows).returning()
   console.log(`  Inserted ${insertedSuppliers.length} suppliers`)
 
-  // ── 6. INSERT PURCHASE ORDERS (2-3 per supplier) ─────────────────────────
+  // ── 6. INSERT PURCHASE ORDERS ─────────────────────────────────────────────
 
   console.log('Inserting purchase orders...')
   const poRows: (typeof schema.purchaseOrders.$inferInsert)[] = []
   let poCounter = 1
-  const poAmounts: number[] = []
 
   for (const supplier of insertedSuppliers) {
     const numPOs = randInt(2, 3)
     for (let k = 0; k < numPOs; k++) {
       const poNum = `PO-ALI-${String(poCounter).padStart(6, '0')}`
       const project = pick(AYALA_PROJECTS)
-      const issuedDate = new Date(2025, randInt(6, 9), randInt(1, 28)) // Jul-Oct 2025
+      const issuedDate = new Date(2025, randInt(6, 9), randInt(1, 28))
       const deliveryDays = randInt(60, 180)
       const amount = randInt(200_000, 5_000_000)
-      poAmounts.push(amount)
 
-      // Determine PO status based on date
       const expectedDelivery = addDays(issuedDate, deliveryDays)
       const now = new Date('2026-03-10')
       let poStatus: string
@@ -513,7 +504,7 @@ export async function seedDatabase() {
   const insertedPOs = await db.insert(schema.purchaseOrders).values(poRows).returning()
   console.log(`  Inserted ${insertedPOs.length} purchase orders`)
 
-  // ── 7. INSERT GOODS RECEIPTS (for received/closed POs) ───────────────────
+  // ── 7. INSERT GOODS RECEIPTS ──────────────────────────────────────────────
 
   console.log('Inserting goods receipts...')
   const grRows: (typeof schema.goodsReceipts.$inferInsert)[] = []
@@ -603,7 +594,7 @@ export async function seedDatabase() {
   const insertedSIs = await chunkedInsertReturning(schema.supplierInvoices, siRows)
   console.log(`  Inserted ${insertedSIs.length} supplier invoices`)
 
-  // ── 9. INSERT OUTGOING PAYMENTS (for paid supplier invoices) ─────────────
+  // ── 9. INSERT OUTGOING PAYMENTS ───────────────────────────────────────────
 
   console.log('Inserting outgoing payments...')
   const opRows: (typeof schema.outgoingPayments.$inferInsert)[] = []
@@ -635,7 +626,6 @@ export async function seedDatabase() {
 
   console.log('Inserting 3-way matches...')
 
-  // Build a map: poId -> { grId, siId } for matching
   type MatchGroup = { poId: number; supplierId: number; grIds: number[]; siIds: number[] }
   const matchGroups = new Map<number, MatchGroup>()
 
@@ -652,7 +642,6 @@ export async function seedDatabase() {
   }
 
   const twmRows: (typeof schema.threeWayMatches.$inferInsert)[] = []
-  let twmCounter = 1
 
   for (const [, group] of Array.from(matchGroups)) {
     if (group.grIds.length === 0 || group.siIds.length === 0) continue
@@ -668,7 +657,6 @@ export async function seedDatabase() {
     const grAmt = Number(gr.amount)
     const siAmt = Number(si.amount)
 
-    // Weighted match status: 70% FULL, 15% PARTIAL, 15% MISMATCH
     const matchStatus = pickWeighted(
       ['FULL_MATCH', 'PARTIAL_MATCH', 'MISMATCH'],
       [70, 15, 15]
@@ -712,20 +700,57 @@ export async function seedDatabase() {
       reviewedBy: matchStatus !== 'PENDING_REVIEW' ? `${pick(['Ana', 'Jose', 'Maria'])} ${pick(['Reyes', 'Santos', 'Cruz'])}` : null,
       reviewedAt: matchStatus === 'FULL_MATCH' ? addDays(new Date(si.submittedDate!), randInt(1, 5)) : null,
     })
-    twmCounter++
   }
 
   const insertedTWMs = await chunkedInsertReturning(schema.threeWayMatches, twmRows)
   console.log(`  Inserted ${insertedTWMs.length} 3-way matches`)
 
+  console.log('Stage 2 complete')
+}
+
+// ─── Stage 3: ML scores, insight cards, documents, escalations, cash flow forecasts ─
+
+export async function seedStage3() {
+  resetSeed(STAGE_SEEDS[3])
+  console.log('Stage 3: ML scores + insight cards + documents + escalations + cash flow forecasts')
+
+  // Query customers from DB (inserted in stage 1)
+  const allCustomers = await db.select().from(schema.customers)
+
+  // Rebuild payment profiles deterministically (same logic as stage 1, same PRNG state at same point)
+  // We re-derive them by re-running the same PRNG sequence used to create them in stage 1.
+  // Since we reset the seed to STAGE_SEEDS[3] above, we need the profiles from the DB instead.
+  // Use delinquency heuristic: query invoice data to derive risk proxy per customer.
+  type InvSummaryRow = { customer_id: number; overdue_count: number; total_count: number }
+  const invSummary = await db.execute(sql.raw(`
+    SELECT customer_id,
+           COUNT(*) FILTER (WHERE status = 'OVERDUE') AS overdue_count,
+           COUNT(*) AS total_count
+    FROM invoices_col
+    GROUP BY customer_id
+  `)) as unknown as InvSummaryRow[]
+
+  const invSummaryMap = new Map(invSummary.map(r => [r.customer_id, r]))
+
+  // Derive a rough payment profile (0-4) from invoice data for ML score generation
+  function deriveProfile(customerId: number): number {
+    const s = invSummaryMap.get(customerId)
+    if (!s || s.total_count === 0) return 0
+    const overdueRate = s.overdue_count / s.total_count
+    if (overdueRate < 0.05) return 0
+    if (overdueRate < 0.15) return 1
+    if (overdueRate < 0.30) return 2
+    if (overdueRate < 0.50) return 3
+    return 4
+  }
+
   // ── 11. INSERT ML SCORES ──────────────────────────────────────────────────
 
-  console.log('Inserting ML scores (payer_segments, delinquency, credit_risk, payment_patterns)...')
+  console.log('Inserting ML scores...')
 
-  // Payer segments
   const segmentNames = ['CHAMPION', 'LOYAL', 'AT_RISK', 'LAPSED', 'PROMISING']
-  const payerSegRows = allCustomers.map((c, i) => {
-    const profile = paymentProfiles[i] ?? 0
+  const payerSegRows = allCustomers.map((c) => {
+    const profile = deriveProfile(c.customerId!)
     const segmentIdx = Math.min(profile + randInt(0, 1), segmentNames.length - 1)
     return {
       customerId: c.customerId!,
@@ -739,9 +764,8 @@ export async function seedDatabase() {
   await chunkedInsert(schema.payerSegments, payerSegRows)
   console.log(`  Inserted ${payerSegRows.length} payer segments`)
 
-  // Delinquency scores
-  const delinqRows = allCustomers.map((c, i) => {
-    const profile = paymentProfiles[i] ?? 0
+  const delinqRows = allCustomers.map((c) => {
+    const profile = deriveProfile(c.customerId!)
     const baseRisk = [0.02, 0.08, 0.20, 0.45, 0.75][profile]
     const riskScore = Math.min(0.9999, Math.max(0.0001, baseRisk + (rand() - 0.5) * 0.1))
     const riskLevel = riskScore < 0.15 ? 'LOW' : riskScore < 0.40 ? 'MEDIUM' : 'HIGH'
@@ -765,17 +789,25 @@ export async function seedDatabase() {
   await chunkedInsert(schema.delinquencyScores, delinqRows)
   console.log(`  Inserted ${delinqRows.length} delinquency scores`)
 
-  // Credit risk scores
-  const creditRiskRows = allCustomers.map((c, i) => {
-    const profile = paymentProfiles[i] ?? 0
+  // Query invoice totals for credit risk calculation
+  type InvBalRow = { customer_id: number; outstanding: number; total_billed: number }
+  const invBalances = await db.execute(sql.raw(`
+    SELECT customer_id,
+           SUM(CASE WHEN status != 'PAID' THEN balance_remaining ELSE 0 END) AS outstanding,
+           SUM(amount) AS total_billed
+    FROM invoices_col
+    GROUP BY customer_id
+  `)) as unknown as InvBalRow[]
+  const invBalMap = new Map(invBalances.map(r => [r.customer_id, r]))
+
+  const creditRiskRows = allCustomers.map((c) => {
+    const profile = deriveProfile(c.customerId!)
     const baseRisk = [0.03, 0.10, 0.25, 0.50, 0.80][profile]
     const riskScore = Math.min(0.9999, Math.max(0.0001, baseRisk + (rand() - 0.5) * 0.12))
     const riskLevel = riskScore < 0.20 ? 'LOW' : riskScore < 0.50 ? 'MEDIUM' : 'HIGH'
-    const custInvoices = insertedInvoices.filter(inv => inv.customerId === c.customerId)
-    const outstanding = custInvoices
-      .filter(inv => inv.status !== 'PAID')
-      .reduce((sum, inv) => sum + Number(inv.balanceRemaining), 0)
-    const totalBilled = custInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0)
+    const bal = invBalMap.get(c.customerId!) ?? { outstanding: 0, total_billed: 1 }
+    const outstanding = Number(bal.outstanding)
+    const totalBilled = Number(bal.total_billed)
 
     return {
       customerId: c.customerId!,
@@ -790,9 +822,8 @@ export async function seedDatabase() {
   await chunkedInsert(schema.creditRiskScores, creditRiskRows)
   console.log(`  Inserted ${creditRiskRows.length} credit risk scores`)
 
-  // Payment patterns
-  const paymentPatternRows = allCustomers.map((c, i) => {
-    const profile = paymentProfiles[i] ?? 0
+  const paymentPatternRows = allCustomers.map((c) => {
+    const profile = deriveProfile(c.customerId!)
     return {
       customerId: c.customerId!,
       avgDaysToPay: String((3 + profile * 7 + randInt(-2, 5)).toFixed(1)),
@@ -808,15 +839,23 @@ export async function seedDatabase() {
 
   console.log('Inserting insight cards...')
 
-  // Find some high-risk customers for realistic insights
-  const overdueInvoices = insertedInvoices.filter(i => i.status === 'OVERDUE')
-  const highRiskCustomerIds = delinqRows
-    .filter(d => d.riskLevel === 'HIGH')
-    .slice(0, 3)
-    .map(d => d.customerId)
+  type OverdueRow = { count: number; total: number }
+  const overdueAgg = await db.execute(sql.raw(`
+    SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total
+    FROM invoices_col WHERE status = 'OVERDUE'
+  `)) as unknown as OverdueRow[]
+  const overdueCount = Number(overdueAgg[0]?.count ?? 0)
+  const totalOverdueAmount = Number(overdueAgg[0]?.total ?? 0)
 
-  const totalOverdueAmount = overdueInvoices.reduce((s, i) => s + Number(i.amount), 0)
-  const overdueCount = overdueInvoices.length
+  type MismatchRow = { count: number; total: number }
+  const mismatchAgg = await db.execute(sql.raw(`
+    SELECT COUNT(*) AS count, COALESCE(SUM(invoice_amount), 0) AS total
+    FROM three_way_matches_col WHERE match_status = 'MISMATCH'
+  `)) as unknown as MismatchRow[]
+  const mismatchCount = Number(mismatchAgg[0]?.count ?? 0)
+  const mismatchTotal = Number(mismatchAgg[0]?.total ?? 0)
+
+  const highRiskCount = delinqRows.filter(d => d.riskLevel === 'HIGH').length
 
   const insightRows: (typeof schema.insightCards.$inferInsert)[] = [
     {
@@ -832,7 +871,7 @@ export async function seedDatabase() {
     {
       severity: 'HIGH',
       title: '3-Way Match Discrepancies Require Approval',
-      body: `${insertedTWMs.filter(m => m.matchStatus === 'MISMATCH').length} purchase order invoices have failed 3-way matching. Total value at risk: ₱${(insertedTWMs.filter(m => m.matchStatus === 'MISMATCH').reduce((s, m) => s + Number(m.invoiceAmount), 0) / 1_000_000).toFixed(1)}M. Review before payment release.`,
+      body: `${mismatchCount} purchase order invoices have failed 3-way matching. Total value at risk: ₱${(mismatchTotal / 1_000_000).toFixed(1)}M. Review before payment release.`,
       action: 'VIEW_MISMATCHED_POS',
       relatedEntityType: 'PO',
       relatedParams: JSON.stringify({ matchStatus: 'MISMATCH' }),
@@ -852,7 +891,7 @@ export async function seedDatabase() {
     {
       severity: 'HIGH',
       title: 'High Delinquency Risk — 5 Tenants Flagged',
-      body: `ML delinquency model has flagged ${highRiskCustomerIds.length} tenant accounts with risk scores above 0.70. Proactive outreach recommended to avoid escalation to legal collections.`,
+      body: `ML delinquency model has flagged ${highRiskCount} tenant accounts with risk scores above 0.70. Proactive outreach recommended to avoid escalation to legal collections.`,
       action: 'VIEW_HIGH_RISK_CUSTOMERS',
       relatedEntityType: 'CUSTOMER',
       relatedParams: JSON.stringify({ riskLevel: 'HIGH', type: 'TENANT' }),
@@ -878,66 +917,61 @@ export async function seedDatabase() {
 
   console.log('Inserting sample documents...')
 
-  // Use first 3 invoices that have payments
-  const paidInvoices = insertedInvoices.filter(i => i.status === 'PAID').slice(0, 3)
-  const paidPayments = insertedPayments.filter(p =>
-    paidInvoices.some(i => i.invoiceId === p.invoiceId)
-  ).slice(0, 3)
+  type PaidInvDocRow = { invoice_id: number; customer_id: number; payment_id: number | null }
+  const paidInvDocs = await db.execute(sql.raw(`
+    SELECT i.invoice_id, i.customer_id, p.payment_id
+    FROM invoices_col i
+    LEFT JOIN incoming_payments_col p ON p.invoice_id = i.invoice_id AND p.status = 'CONFIRMED'
+    WHERE i.status = 'PAID'
+    ORDER BY i.invoice_id
+    LIMIT 3
+  `)) as unknown as PaidInvDocRow[]
+
+  type CustRow = { customer_id: number }
+  const cust12 = await db.execute(sql.raw(`SELECT customer_id FROM customers_col ORDER BY customer_id LIMIT 1 OFFSET 12`)) as unknown as CustRow[]
+  const cust2 = await db.execute(sql.raw(`SELECT customer_id FROM customers_col ORDER BY customer_id LIMIT 1 OFFSET 2`)) as unknown as CustRow[]
+
+  type OverdueInvRow = { invoice_id: number }
+  const overdueForCust12 = await db.execute(sql.raw(`
+    SELECT invoice_id FROM invoices_col
+    WHERE customer_id = ${cust12[0]?.customer_id ?? 0} AND status = 'OVERDUE'
+    LIMIT 1
+  `)) as unknown as OverdueInvRow[]
 
   const docRows: (typeof schema.documents.$inferInsert)[] = [
     {
-      customerId: paidInvoices[0]?.customerId ?? allCustomers[0].customerId!,
-      invoiceId: paidInvoices[0]?.invoiceId,
-      paymentId: paidPayments[0]?.paymentId,
+      customerId: paidInvDocs[0]?.customer_id ?? allCustomers[0].customerId!,
+      invoiceId: paidInvDocs[0]?.invoice_id,
+      paymentId: paidInvDocs[0]?.payment_id ?? null,
       fileUrl: 'https://storage.ayalaland.com/docs/payment-receipts/receipt-001.pdf',
       fileName: 'payment_receipt_oct2025.pdf',
       fileType: 'application/pdf',
       ocrResult: JSON.stringify({
         extractedText: 'OFFICIAL RECEIPT\nDate: November 14, 2025\nReceived from: Globe Telecom Inc.\nAmount: PHP 1,125,000.00\nFor: Rental payment — One Ayala East Tower 20F October 2025',
         confidence: 0.97,
-        fields: {
-          payerName: 'Globe Telecom Inc.',
-          amount: 1125000.00,
-          date: '2025-11-14',
-          purpose: 'Rental payment',
-        },
+        fields: { payerName: 'Globe Telecom Inc.', amount: 1125000.00, date: '2025-11-14', purpose: 'Rental payment' },
       }),
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({
-        status: 'VALID',
-        matchedInvoice: true,
-        amountMatches: true,
-        payerMatches: true,
-      }),
+      validationResult: JSON.stringify({ status: 'VALID', matchedInvoice: true, amountMatches: true, payerMatches: true }),
     },
     {
-      customerId: paidInvoices[1]?.customerId ?? allCustomers[1].customerId!,
-      invoiceId: paidInvoices[1]?.invoiceId,
-      paymentId: paidPayments[1]?.paymentId,
+      customerId: paidInvDocs[1]?.customer_id ?? allCustomers[1].customerId!,
+      invoiceId: paidInvDocs[1]?.invoice_id,
+      paymentId: paidInvDocs[1]?.payment_id ?? null,
       fileUrl: 'https://storage.ayalaland.com/docs/payment-receipts/receipt-002.pdf',
       fileName: 'bank_transfer_confirmation_nov2025.pdf',
       fileType: 'application/pdf',
       ocrResult: JSON.stringify({
         extractedText: 'BANK TRANSFER CONFIRMATION\nDate: December 12, 2025\nBeneficiary: Ayala Land Inc.\nAmount: PHP 2,250,000.00\nReference: TRF-2025121200045\nSender: IKEA Philippines',
         confidence: 0.94,
-        fields: {
-          payerName: 'IKEA Philippines',
-          amount: 2250000.00,
-          date: '2025-12-12',
-          referenceNumber: 'TRF-2025121200045',
-        },
+        fields: { payerName: 'IKEA Philippines', amount: 2250000.00, date: '2025-12-12', referenceNumber: 'TRF-2025121200045' },
       }),
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({
-        status: 'VALID',
-        matchedInvoice: true,
-        amountMatches: true,
-        payerMatches: true,
-      }),
+      validationResult: JSON.stringify({ status: 'VALID', matchedInvoice: true, amountMatches: true, payerMatches: true }),
     },
     {
-      customerId: allCustomers[12]?.customerId ?? allCustomers[2].customerId!,
-      invoiceId: insertedInvoices.find(i => i.customerId === allCustomers[12]?.customerId && i.status === 'OVERDUE')?.invoiceId,
+      customerId: cust12[0]?.customer_id ?? cust2[0]?.customer_id ?? allCustomers[2].customerId!,
+      invoiceId: overdueForCust12[0]?.invoice_id ?? null,
       paymentId: null,
       fileUrl: 'https://storage.ayalaland.com/docs/disputes/dispute-letter-001.pdf',
       fileName: 'dispute_letter_jpmorgan_jan2026.pdf',
@@ -945,20 +979,10 @@ export async function seedDatabase() {
       ocrResult: JSON.stringify({
         extractedText: 'FORMAL LETTER OF DISPUTE\nDate: February 3, 2026\nTo: Ayala Land Inc. Property Management\nRe: Invoice ALI-INV-2026-001 — We wish to dispute the service charges...',
         confidence: 0.91,
-        fields: {
-          letterType: 'DISPUTE',
-          sender: 'JP Morgan Chase Bank N.A.',
-          date: '2026-02-03',
-          subject: 'Invoice dispute',
-        },
+        fields: { letterType: 'DISPUTE', sender: 'JP Morgan Chase Bank N.A.', date: '2026-02-03', subject: 'Invoice dispute' },
       }),
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({
-        status: 'DISPUTED',
-        requiresReview: true,
-        disputeType: 'SERVICE_CHARGE',
-        escalationRequired: true,
-      }),
+      validationResult: JSON.stringify({ status: 'DISPUTED', requiresReview: true, disputeType: 'SERVICE_CHARGE', escalationRequired: true }),
     },
   ]
 
@@ -1035,7 +1059,6 @@ export async function seedDatabase() {
   console.log('Inserting cash flow forecasts...')
   const cfRows: (typeof schema.cashFlowForecasts.$inferInsert)[] = []
 
-  // Monthly forecasts Apr 2026 – Sep 2026
   const forecastMonths = [
     { year: 2026, month: 4 },
     { year: 2026, month: 5 },
@@ -1045,7 +1068,6 @@ export async function seedDatabase() {
     { year: 2026, month: 9 },
   ]
 
-  // Simulate a growth trend with seasonal variation
   const inflowTrend = [18_500_000, 19_200_000, 19_800_000, 20_100_000, 20_800_000, 21_500_000]
   const outflowTrend = [13_200_000, 13_800_000, 13_500_000, 14_100_000, 14_600_000, 14_300_000]
 
@@ -1067,6 +1089,15 @@ export async function seedDatabase() {
 
   await db.insert(schema.cashFlowForecasts).values(cfRows)
   console.log(`  Inserted ${cfRows.length} cash flow forecasts`)
+
+  console.log('Stage 3 complete')
+}
+
+// ─── Stage 4: Penalty config, penalty ledger, payment allocations, AP workflow events ─
+
+export async function seedStage4() {
+  resetSeed(STAGE_SEEDS[4])
+  console.log('Stage 4: penalties + payment allocations + AP workflow events')
 
   // ── 16. Penalty Config ────────────────────────────────────────────────────
 
@@ -1116,13 +1147,11 @@ export async function seedDatabase() {
     invoicePenaltyTotals.push({ invoiceId: inv.invoiceId, total: totalPen })
   }
 
-  // Batch insert penalties in chunks of 50
   for (let i = 0; i < penaltyBatch.length; i += 50) {
     const chunk = penaltyBatch.slice(i, i + 50)
     await db.insert(penaltyLedger).values(chunk)
   }
 
-  // Update denormalized totals on invoices (single SQL call)
   if (invoicePenaltyTotals.length > 0) {
     const cases = invoicePenaltyTotals.map(({ invoiceId, total }) =>
       `WHEN ${invoiceId} THEN ${total}`
@@ -1151,7 +1180,6 @@ export async function seedDatabase() {
       })
     }
   }
-  // Batch insert in chunks of 50
   for (let i = 0; i < allocBatch.length; i += 50) {
     const chunk = allocBatch.slice(i, i + 50)
     await db.insert(paymentAllocations).values(chunk)
@@ -1216,7 +1244,6 @@ export async function seedDatabase() {
     }
   }
 
-  // Batch update workflow statuses (single SQL call)
   if (statusUpdates.length > 0) {
     const cases = statusUpdates.map(({ id, status }) =>
       `WHEN ${id} THEN '${status}'`
@@ -1227,14 +1254,22 @@ export async function seedDatabase() {
     ))
   }
 
-  // Batch insert workflow events in chunks of 50
   for (let i = 0; i < eventBatch.length; i += 50) {
     const chunk = eventBatch.slice(i, i + 50)
     await db.insert(apWorkflowEvents).values(chunk)
   }
   console.log(`  ${eventCount} AP workflow events seeded`)
 
-  // ── 20. Security Deposits (LEASE contracts) ───────────────────────────────
+  console.log('Stage 4 complete')
+}
+
+// ─── Stage 5: Security deposits, forfeitures, credit ledger, milestone templates, PO milestones, check payments ─
+
+export async function seedStage5() {
+  resetSeed(STAGE_SEEDS[5])
+  console.log('Stage 5: deposits + forfeitures + credit ledger + milestones + check payments')
+
+  // ── 20. Security Deposits ─────────────────────────────────────────────────
 
   console.log('Seeding security deposits for LEASE contracts...')
   type LeaseRow = { customer_id: number; contract_id: number; monthly_amount: string }
@@ -1253,10 +1288,9 @@ export async function seedDatabase() {
   }
   console.log(`  ${insertedDeposits.length} security deposits seeded`)
 
-  // ── 21. Deposit Forfeitures (all scenarios in minimal DB calls) ──────────
+  // ── 21. Deposit Forfeitures ───────────────────────────────────────────────
 
   console.log('Seeding deposit forfeitures...')
-  // Single query to get all forfeiture candidates
   type ForfeitCandidate = { invoice_id: number; customer_id: number; amount: string; due_date: string; deposit_id: number; current_balance: string; days_overdue: number }
   const forfeitCandidates = await db.execute(sql.raw(`SELECT i.invoice_id, i.customer_id, i.amount, i.due_date, sd.deposit_id, sd.current_balance, EXTRACT(DAY FROM NOW() - i.due_date::date)::int as days_overdue FROM invoices_col i INNER JOIN security_deposits_col sd ON sd.customer_id = i.customer_id WHERE i.status IN ('OVERDUE', 'PARTIAL') AND i.due_date < CURRENT_DATE - INTERVAL '90 days' AND sd.current_balance > 0 ORDER BY i.due_date ASC LIMIT 10`)) as unknown as ForfeitCandidate[]
 
@@ -1265,14 +1299,12 @@ export async function seedDatabase() {
   const depositBalUpdates: { id: number; newBalance: number }[] = []
 
   if (forfeitCandidates.length >= 2) {
-    // Scenario 1: APPROVED forfeiture on oldest invoice
     const s1 = forfeitCandidates[0]
     const amt1 = Math.min(Number(s1.amount) * 0.5, Number(s1.current_balance))
     forfeitInserts.push({ depositId: s1.deposit_id, customerId: s1.customer_id, invoiceId: s1.invoice_id, amount: String(amt1.toFixed(2)), status: 'APPROVED', reviewedBy: 'admin@ayalaland.com', reviewedAt: new Date('2026-03-01'), notes: 'Approved — 150+ days overdue' })
     invoiceFlagUpdates.push({ id: s1.invoice_id, flag: 'FORFEITED' })
     depositBalUpdates.push({ id: s1.deposit_id, newBalance: Number(s1.current_balance) - amt1 })
 
-    // Scenario 2: FLAGGED forfeiture on next invoice (same or different customer)
     const s2 = forfeitCandidates.find(c => c.invoice_id !== s1.invoice_id) || forfeitCandidates[1]
     const dep2 = insertedDeposits.find(d => d.customerId === s2.customer_id)
     if (dep2) {
@@ -1280,7 +1312,6 @@ export async function seedDatabase() {
       invoiceFlagUpdates.push({ id: s2.invoice_id, flag: 'FLAGGED' })
     }
 
-    // Scenario 4: Full forfeiture on a different customer
     const s4 = forfeitCandidates.find(c => c.customer_id !== s1.customer_id && c.customer_id !== s2.customer_id)
     if (s4) {
       forfeitInserts.push({ depositId: s4.deposit_id, customerId: s4.customer_id, invoiceId: s4.invoice_id, amount: s4.current_balance, status: 'APPROVED', reviewedBy: 'admin@ayalaland.com', reviewedAt: new Date('2026-03-10'), notes: 'Full deposit exhaustion' })
@@ -1289,9 +1320,7 @@ export async function seedDatabase() {
     }
   }
 
-  // Batch insert forfeitures
   if (forfeitInserts.length > 0) await db.insert(depositForfeitures).values(forfeitInserts)
-  // Batch update invoice flags and deposit balances via single SQL calls
   if (invoiceFlagUpdates.length > 0) {
     const cases = invoiceFlagUpdates.map(u => `WHEN ${u.id} THEN '${u.flag}'`).join(' ')
     const ids = invoiceFlagUpdates.map(u => u.id).join(',')
@@ -1317,7 +1346,6 @@ export async function seedDatabase() {
   })
   if (creditInserts.length > 0) {
     await db.insert(creditLedger).values(creditInserts.map(({ _amt, ...rest }) => rest))
-    // Batch update credit balances
     const cases = creditInserts.map(c => `WHEN ${c.customerId} THEN credit_balance + ${c._amt}`).join(' ')
     const ids = creditInserts.map(c => c.customerId).join(',')
     await db.execute(sql.raw(`UPDATE customers_col SET credit_balance = CASE customer_id ${cases} END WHERE customer_id IN (${ids})`))
@@ -1363,7 +1391,6 @@ export async function seedDatabase() {
   const poMilestoneRows: (typeof poMilestones.$inferInsert)[] = []
 
   for (const po of allPORows) {
-    // ~30% get the Standard 20/40/40 template
     if (rand() > 0.7) {
       const poTotal = Number(po.total_amount)
       const poNow = new Date('2026-03-10')
@@ -1390,7 +1417,7 @@ export async function seedDatabase() {
             status = 'PENDING'
           }
         } else {
-          status = idx === 0 ? 'PENDING' : 'PENDING'
+          status = 'PENDING'
         }
 
         poMilestoneRows.push({
@@ -1408,7 +1435,6 @@ export async function seedDatabase() {
     }
   }
 
-  // Batch insert in chunks of 50
   let milestoneCount = 0
   for (let i = 0; i < poMilestoneRows.length; i += 50) {
     const chunk = poMilestoneRows.slice(i, i + 50)
@@ -1425,10 +1451,10 @@ export async function seedDatabase() {
 
   const now = new Date('2026-03-25')
   const checkPaymentData = [
-    { daysAgo: 1, status: 'PENDING_CLEARANCE', checkNum: 'CHK-1001', clearance: null },
-    { daysAgo: 2, status: 'PENDING_CLEARANCE', checkNum: 'CHK-1002', clearance: null },
+    { daysAgo: 1, status: 'PENDING_CLEARANCE', checkNum: 'CHK-1001', clearance: null as Date | null },
+    { daysAgo: 2, status: 'PENDING_CLEARANCE', checkNum: 'CHK-1002', clearance: null as Date | null },
     { daysAgo: 5, status: 'CONFIRMED',          checkNum: 'CHK-1003', clearance: addDays(now, -3) },
-    { daysAgo: 7, status: 'BOUNCED',            checkNum: 'CHK-1004', clearance: null },
+    { daysAgo: 7, status: 'BOUNCED',            checkNum: 'CHK-1004', clearance: null as Date | null },
   ]
 
   const checkPaymentRows: (typeof incomingPayments.$inferInsert)[] = []
@@ -1456,22 +1482,17 @@ export async function seedDatabase() {
   }
   console.log(`  ${insertedCheckPayments.length} check payments seeded`)
 
-  // ── Summary ───────────────────────────────────────────────────────────────
+  console.log('Stage 5 complete')
+}
 
-  console.log('\n✅ Seed complete! Summary:')
-  console.log(`  Customers:           ${allCustomers.length} (${insertedTenants.length} tenants + ${insertedPMs.length} property managers)`)
-  console.log(`  Contracts:           ${insertedContracts.length}`)
-  console.log(`  Invoices:            ${insertedInvoices.length}`)
-  console.log(`  Incoming Payments:   ${insertedPayments.length}`)
-  console.log(`  Suppliers:           ${insertedSuppliers.length}`)
-  console.log(`  Purchase Orders:     ${insertedPOs.length}`)
-  console.log(`  Goods Receipts:      ${insertedGRs.length}`)
-  console.log(`  Supplier Invoices:   ${insertedSIs.length}`)
-  console.log(`  Outgoing Payments:   ${insertedOPs.length}`)
-  console.log(`  3-Way Matches:       ${insertedTWMs.length}`)
-  console.log(`  ML Scores:           ${allCustomers.length * 4} (4 tables × ${allCustomers.length} customers)`)
-  console.log(`  Insight Cards:       ${insightRows.length}`)
-  console.log(`  Documents:           ${insertedDocs.length}`)
-  console.log(`  Escalations:         ${escalationRows.length}`)
-  console.log(`  Cash Flow Forecasts: ${cfRows.length}`)
+// ─── Main (backwards compat) ──────────────────────────────────────────────────
+
+export async function seedDatabase() {
+  console.log('Starting Ayala Land Payments Portal seed...\n')
+  await seedStage1()
+  await seedStage2()
+  await seedStage3()
+  await seedStage4()
+  await seedStage5()
+  console.log('\nSeed complete!')
 }
