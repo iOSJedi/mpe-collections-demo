@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { suppliers, supplierInvoices, purchaseOrders, threeWayMatches } from '@/db/schema'
 import { eq, desc, sql } from 'drizzle-orm'
 import type { SupplierDetail, POSummary, SupplierInvoiceSummary } from '@/types'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +21,10 @@ export async function GET(
     if (isNaN(supplierId)) {
       return NextResponse.json({ error: 'Invalid supplier ID' }, { status: 400 })
     }
+
+    const cacheKey = `supplier-detail-${supplierId}`
+    const cached = getFromCache(cacheKey)
+    if (cached) return cachedJson(cached, 15, 30)
 
     // Fetch supplier with aggregates
     const [supplierRow] = await db
@@ -130,7 +135,8 @@ export async function GET(
       recent_invoices,
     }
 
-    return NextResponse.json(result)
+    setInCache(cacheKey, result, 15_000)
+    return cachedJson(result, 15, 30)
   } catch (error) {
     console.error('Failed to fetch supplier detail:', error)
     return NextResponse.json({ error: 'Failed to fetch supplier detail' }, { status: 500 })

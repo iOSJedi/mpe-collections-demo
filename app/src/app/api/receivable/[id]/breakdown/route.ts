@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +19,10 @@ export async function GET(
     if (isNaN(customerId)) {
       return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 })
     }
+
+    const cacheKey = `customer-breakdown-${customerId}`
+    const cached = getFromCache(cacheKey)
+    if (cached) return cachedJson(cached, 15, 30)
 
     // Customer info
     const custResult = await db.execute(sql`SELECT customer_id, name, account_number FROM customers_col WHERE customer_id = ${customerId}`)
@@ -119,7 +124,7 @@ export async function GET(
     const totalPenalties = invoicesOut.reduce((s, i) => s + i.totalPenalties, 0)
     const totalPaid = paymentsOut.filter(p => p.status === 'CONFIRMED').reduce((s, p) => s + p.amount, 0)
 
-    return NextResponse.json({
+    const result = {
       customer: { customerId: customer.customer_id, name: customer.name, accountNumber: customer.account_number },
       invoices: invoicesOut,
       payments: paymentsOut,
@@ -129,7 +134,9 @@ export async function GET(
         totalPaid,
         grandTotalDue: totalPrincipal + totalPenalties - totalPaid,
       },
-    })
+    }
+    setInCache(cacheKey, result, 15_000)
+    return cachedJson(result, 15, 30)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('Breakdown failed:', msg)

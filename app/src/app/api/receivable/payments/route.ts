@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export const GET = withAuth(async (request: NextRequest) => {
   try {
@@ -15,6 +16,10 @@ export const GET = withAuth(async (request: NextRequest) => {
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
     const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') ?? '50', 10)))
     const offset = (page - 1) * limit
+
+    const cacheKey = `payments-list-${page}-${limit}-${paymentMethod ?? ''}-${status ?? ''}-${customerId ?? ''}-${from ?? ''}-${to ?? ''}-${search ?? ''}`
+    const cached = getFromCache(cacheKey)
+    if (cached) return cachedJson(cached, 30, 60)
 
     // Build WHERE clauses
     const conditions: string[] = []
@@ -52,7 +57,8 @@ export const GET = withAuth(async (request: NextRequest) => {
       clearance_date: r.clearance_date ? String(r.clearance_date) : null,
     }))
 
-    return NextResponse.json(mapped)
+    setInCache(cacheKey, mapped, 30_000)
+    return cachedJson(mapped, 30, 60)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('Failed to fetch incoming payments:', msg)

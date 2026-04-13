@@ -5,12 +5,17 @@ import { supplierInvoices, suppliers, purchaseOrders, goodsReceipts, threeWayMat
 import { eq, and, sql } from 'drizzle-orm'
 import type { ClaimSummary, WorkflowStatus } from '@/types'
 import type { AuthenticatedUser } from '@/lib/auth-middleware'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export const GET = withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const supplierIdParam = searchParams.get('supplierId')
+
+    const cacheKey = `claims-list-${status ?? ''}-${supplierIdParam ?? ''}`
+    const cached = getFromCache(cacheKey)
+    if (cached) return cachedJson(cached, 15, 30)
 
     const conditions = []
 
@@ -67,7 +72,8 @@ export const GET = withAuth(async (request: NextRequest, user: AuthenticatedUser
       claimDocumentUrl: r.claimDocumentUrl ?? null,
     }))
 
-    return NextResponse.json(result)
+    setInCache(cacheKey, result, 15_000)
+    return cachedJson(result, 15, 30)
   } catch (error) {
     console.error('Failed to fetch claims:', error)
     return NextResponse.json({ error: 'Failed to fetch claims' }, { status: 500 })

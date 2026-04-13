@@ -4,12 +4,17 @@ import { db } from '@/db'
 import { invoices, customers, delinquencyScores, incomingPayments } from '@/db/schema'
 import { eq, inArray, sql, desc } from 'drizzle-orm'
 import type { WorklistItem } from '@/types'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 // GET /api/collections/worklist
 // Returns invoices grouped by customer_id where status IN ('OVERDUE','PARTIAL')
 // Joined with delinquency_scores for risk_level, incoming_payments for last payment date
 // Sorted by total_overdue DESC
 export const GET = withAuth(async (_request: NextRequest) => {
+  const cacheKey = 'collections-worklist'
+  const cached = getFromCache(cacheKey)
+  if (cached) return cachedJson(cached, 30, 60)
+
   try {
     const rows = await db
       .select({
@@ -49,7 +54,8 @@ export const GET = withAuth(async (_request: NextRequest) => {
       days_overdue: Number(r.days_overdue),
     }))
 
-    return NextResponse.json(result)
+    setInCache(cacheKey, result, 30_000)
+    return cachedJson(result, 30, 60)
   } catch (error) {
     console.error('Failed to fetch collections worklist:', error)
     return NextResponse.json({ error: 'Failed to fetch collections worklist' }, { status: 500 })

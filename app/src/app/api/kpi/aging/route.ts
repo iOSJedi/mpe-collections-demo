@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export const GET = withAuth(async (_request: NextRequest) => {
+  const cacheKey = 'kpi-aging'
+  const cached = getFromCache(cacheKey)
+  if (cached) return cachedJson(cached, 60, 120)
+
   try {
     const result = await db.execute(sql`
       SELECT
@@ -33,7 +38,8 @@ export const GET = withAuth(async (_request: NextRequest) => {
       amount: bucketMap.get(bucket) ?? 0,
     }))
 
-    return NextResponse.json(aging)
+    setInCache(cacheKey, aging, 60_000)
+    return cachedJson(aging, 60, 120)
   } catch (error) {
     console.error('Failed to fetch aging data:', error)
     return NextResponse.json({ error: 'Failed to fetch aging data' }, { status: 500 })

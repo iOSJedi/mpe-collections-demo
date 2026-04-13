@@ -3,8 +3,13 @@ import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { insightCards } from '@/db/schema'
 import { desc, sql } from 'drizzle-orm'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export const GET = withAuth(async (_request: NextRequest) => {
+  const cacheKey = 'insights-cards'
+  const cached = getFromCache(cacheKey)
+  if (cached) return cachedJson(cached, 60, 120)
+
   try {
     const cards = await db
       .select()
@@ -27,7 +32,9 @@ export const GET = withAuth(async (_request: NextRequest) => {
       created_at: c.createdAt ? String(c.createdAt) : null,
     }))
 
-    return NextResponse.json({ insights })
+    const result = { insights }
+    setInCache(cacheKey, result, 60_000)
+    return cachedJson(result, 60, 120)
   } catch (error) {
     console.error('Failed to fetch insights:', error)
     return NextResponse.json({ insights: [] })

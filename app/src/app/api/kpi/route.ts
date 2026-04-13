@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export const GET = withAuth(async (_request: NextRequest) => {
+  const cacheKey = 'kpi-dashboard'
+  const cached = getFromCache(cacheKey)
+  if (cached) return cachedJson(cached, 60, 120)
+
   try {
     const [
       receivablesResult,
@@ -84,7 +89,7 @@ export const GET = withAuth(async (_request: NextRequest) => {
     const totalCount = Number(collectionRateResult[0]?.total_count ?? 0)
     const collectionRate = totalCount === 0 ? 0 : paidCount / totalCount
 
-    return NextResponse.json({
+    const result = {
       total_receivables: Number(receivablesResult[0]?.total_receivables ?? 0),
       overdue_receivables: Number(overdueReceivablesResult[0]?.overdue_receivables ?? 0),
       dso: Number(dsoResult[0]?.dso ?? 0),
@@ -93,7 +98,9 @@ export const GET = withAuth(async (_request: NextRequest) => {
       overdue_customers: Number(overdueCustomersResult[0]?.overdue_customers ?? 0),
       collection_rate: collectionRate,
       total_payables: Number(totalPayablesResult[0]?.total_payables ?? 0),
-    })
+    }
+    setInCache(cacheKey, result, 60_000)
+    return cachedJson(result, 60, 120)
   } catch (error) {
     console.error('Failed to fetch KPIs:', error)
     return NextResponse.json({ error: 'Failed to fetch KPIs' }, { status: 500 })

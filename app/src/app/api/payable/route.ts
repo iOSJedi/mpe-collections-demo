@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { suppliers, supplierInvoices, purchaseOrders, threeWayMatches } from '@/db/schema'
 import { eq, ilike, sql, and } from 'drizzle-orm'
 import type { SupplierSummary } from '@/types'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export const GET = withAuth(async (request: NextRequest) => {
   try {
@@ -14,6 +15,10 @@ export const GET = withAuth(async (request: NextRequest) => {
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
     const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') ?? '50', 10)))
     const offset = (page - 1) * limit
+
+    const cacheKey = `payable-list-${page}-${limit}-${search ?? ''}-${type ?? ''}-${category ?? ''}`
+    const cached = getFromCache(cacheKey)
+    if (cached) return cachedJson(cached, 30, 60)
 
     const conditions = []
 
@@ -69,7 +74,8 @@ export const GET = withAuth(async (request: NextRequest) => {
       blocked_invoices: Number(r.blocked_invoices),
     }))
 
-    return NextResponse.json(result)
+    setInCache(cacheKey, result, 30_000)
+    return cachedJson(result, 30, 60)
   } catch (error) {
     console.error('Failed to fetch suppliers:', error)
     return NextResponse.json({ error: 'Failed to fetch suppliers' }, { status: 500 })

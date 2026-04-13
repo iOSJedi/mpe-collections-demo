@@ -13,6 +13,7 @@ import {
 } from '@/db/schema'
 import { eq, desc, gte, sql } from 'drizzle-orm'
 import type { CustomerDetail } from '@/types'
+import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
 
 export async function GET(
   request: NextRequest,
@@ -29,6 +30,10 @@ export async function GET(
     if (isNaN(customerId)) {
       return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 })
     }
+
+    const cacheKey = `customer-detail-${customerId}`
+    const cached = getFromCache(cacheKey)
+    if (cached) return cachedJson(cached, 15, 30)
 
     // 1. Customer record
     const [customer] = await db
@@ -184,7 +189,8 @@ export async function GET(
       })),
     }
 
-    return NextResponse.json(result)
+    setInCache(cacheKey, result, 15_000)
+    return cachedJson(result, 15, 30)
   } catch (error) {
     console.error('Failed to fetch customer detail:', error)
     return NextResponse.json({ error: 'Failed to fetch customer detail' }, { status: 500 })
