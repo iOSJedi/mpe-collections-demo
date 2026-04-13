@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
+import { invalidateCache } from '@/lib/cache'
 
 interface RejectBody {
   notes: string
@@ -69,6 +70,8 @@ export async function POST(
           WHERE invoice_id = ${forfeiture.invoice_id}`
     )
 
+    invalidateCache('customer-detail')
+    invalidateCache('customer-breakdown')
     return NextResponse.json({
       success: true,
       forfeitureId,

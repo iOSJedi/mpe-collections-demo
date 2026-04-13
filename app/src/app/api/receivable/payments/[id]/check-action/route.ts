@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm'
 import { incomingPayments, invoices, penaltyConfig, penaltyLedger, paymentAllocations } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { calculateAllocation } from '@/lib/payment-allocation'
+import { invalidateCache } from '@/lib/cache'
 
 export async function POST(
   request: NextRequest,
@@ -47,6 +48,8 @@ export async function POST(
         .set({ status: 'BOUNCED' })
         .where(eq(incomingPayments.paymentId, paymentId))
 
+      invalidateCache('customer-')
+      invalidateCache('payments-list')
       return NextResponse.json({ success: true, status: 'BOUNCED' })
     }
 
@@ -183,6 +186,8 @@ export async function POST(
       }
     }
 
+    invalidateCache('customer-')
+    invalidateCache('payments-list')
     return NextResponse.json({
       success: true,
       status: 'CONFIRMED',

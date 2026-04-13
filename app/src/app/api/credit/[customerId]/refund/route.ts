@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { creditLedger } from '@/db/schema'
 import { sql } from 'drizzle-orm'
+import { invalidateCache } from '@/lib/cache'
 
 export async function POST(
   request: NextRequest,
@@ -57,6 +58,8 @@ export async function POST(
     )
     const updatedRows = updatedBalanceResult as unknown as { credit_balance: string }[]
 
+    invalidateCache('customer-detail')
+    invalidateCache('customer-breakdown')
     return NextResponse.json({
       success: true,
       creditBalance: Number(updatedRows[0].credit_balance),

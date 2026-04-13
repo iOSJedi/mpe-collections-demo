@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { poMilestones } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
+import { invalidateCache } from '@/lib/cache'
 
 export async function POST(
   request: NextRequest,
@@ -42,6 +43,7 @@ export async function POST(
       return NextResponse.json({ error: 'Milestone not found' }, { status: 404 })
     }
 
+    invalidateCache('supplier-detail')
     return NextResponse.json({
       milestoneId: updated.milestoneId,
       poId: updated.poId,

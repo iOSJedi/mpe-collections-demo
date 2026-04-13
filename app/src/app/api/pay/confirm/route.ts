@@ -5,6 +5,7 @@ import { eq, sql } from 'drizzle-orm'
 import { stripe } from '@/lib/stripe'
 import { calculateAllocation } from '@/lib/payment-allocation'
 import { addBusinessDays } from '@/lib/utils'
+import { invalidateCache } from '@/lib/cache'
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest) {
         clearanceDate: clearanceDate.toISOString().split('T')[0],
         status: 'PENDING_CLEARANCE',
       }).returning()
+      invalidateCache('customer-')
+      invalidateCache('payments-list')
       return NextResponse.json({
         success: true,
         paymentId: payment.paymentId,
@@ -186,6 +189,8 @@ export async function POST(request: NextRequest) {
       creditCreated = { amount: allocation.excessAmount }
     }
 
+    invalidateCache('customer-')
+    invalidateCache('payments-list')
     return NextResponse.json({
       success: true,
       paymentId: payment.paymentId,

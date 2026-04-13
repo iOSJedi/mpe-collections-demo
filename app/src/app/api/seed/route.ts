@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth-middleware'
 import { seedDatabase, seedStage1, seedStage2, seedStage3, seedStage4, seedStage5 } from '@/lib/seed'
+import { clearCache } from '@/lib/cache'
 
 export const maxDuration = 300
 
@@ -30,11 +31,13 @@ export const POST = withAuth(async (request: NextRequest) => {
         return NextResponse.json({ error: `Invalid stage: ${stage}. Must be 1–5.` }, { status: 400 })
       }
       await stageFn()
+      clearCache()
       return NextResponse.json({ success: true, stage, message: `Stage ${stage} complete` })
     }
 
     // No stage provided — run all stages (backwards compat)
     await seedDatabase()
+    clearCache()
     return NextResponse.json({ success: true })
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)

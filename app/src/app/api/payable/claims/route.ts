@@ -5,7 +5,7 @@ import { supplierInvoices, suppliers, purchaseOrders, goodsReceipts, threeWayMat
 import { eq, and, sql } from 'drizzle-orm'
 import type { ClaimSummary, WorkflowStatus } from '@/types'
 import type { AuthenticatedUser } from '@/lib/auth-middleware'
-import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
+import { cachedJson, getFromCache, setInCache, invalidateCache } from '@/lib/cache'
 
 export const GET = withAuth(async (request: NextRequest, user: AuthenticatedUser) => {
   try {
@@ -129,6 +129,7 @@ export const POST = withAuth(async (request: NextRequest, user: AuthenticatedUse
       notes: null,
     })
 
+    invalidateCache('claims-list')
     return NextResponse.json(newInvoice, { status: 201 })
   } catch (error) {
     console.error('Failed to submit claim:', error)

@@ -3,7 +3,7 @@ import { db } from '@/db'
 import { penaltyConfig } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { withAuth } from '@/lib/auth-middleware'
-import { cachedJson, getFromCache, setInCache } from '@/lib/cache'
+import { cachedJson, getFromCache, setInCache, invalidateCache } from '@/lib/cache'
 
 // GET /api/penalty-config
 export const GET = withAuth(async () => {
@@ -58,5 +58,6 @@ export const PUT = withAuth(async (request: NextRequest) => {
     })
   }
 
+  invalidateCache('penalty-config')
   return NextResponse.json({ success: true })
 })

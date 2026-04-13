@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { supplierInvoices, apWorkflowEvents } from '@/db/schema'
 import { eq } from 'drizzle-orm'
+import { invalidateCache } from '@/lib/cache'
 
 export async function POST(
   request: NextRequest,
@@ -61,6 +62,7 @@ export async function POST(
       notes,
     })
 
+    invalidateCache('claims-list')
     return NextResponse.json(updated)
   } catch (error) {
     console.error('Failed to reject claim:', error)
