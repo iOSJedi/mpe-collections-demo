@@ -260,7 +260,7 @@ export function PaymentForm({ data, invoiceId, customerId, token }: PaymentFormP
       )}
 
       {paymentMethod === 'bpi' && (
-        <BPITransfer customerId={customerId} invoiceId={invoiceId} />
+        <BPITransfer customerId={customerId} invoiceId={invoiceId} qrToken={token} />
       )}
     </div>
   )
