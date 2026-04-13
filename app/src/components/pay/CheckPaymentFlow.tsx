@@ -8,6 +8,7 @@ interface CheckPaymentFlowProps {
   amount: number
   invoiceId: number
   onComplete: () => void
+  qrToken?: string
 }
 
 type Step = 'details' | 'upload' | 'success'
@@ -27,7 +28,7 @@ const PAYEE_INFO = {
   accountNumber: '1234-5678-90',
 }
 
-export function CheckPaymentFlow({ customerId, amount, invoiceId, onComplete }: CheckPaymentFlowProps) {
+export function CheckPaymentFlow({ customerId, amount, invoiceId, onComplete, qrToken }: CheckPaymentFlowProps) {
   const [step, setStep] = useState<Step>('details')
   const [checkNumber, setCheckNumber] = useState('')
   const [bankIssuer, setBankIssuer] = useState('')
@@ -103,6 +104,7 @@ export function CheckPaymentFlow({ customerId, amount, invoiceId, onComplete }: 
       formData.append('customerId', String(customerId))
       formData.append('invoiceId', String(invoiceId))
       if (paymentId) formData.append('paymentId', String(paymentId))
+      if (qrToken) formData.append('qrToken', qrToken)
 
       await fetch('/api/documents', {
         method: 'POST',

@@ -285,6 +285,7 @@ function PayPage() {
                           invoiceId={state.invoiceId}
                           amount={getPaymentFormData().balance_remaining}
                           onComplete={() => setView('breakdown')}
+                          qrToken={token!}
                         />
                       )}
                     </div>

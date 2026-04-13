@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 interface BPITransferProps {
   customerId: number
   invoiceId: number
+  qrToken?: string
 }
 
 const BPI_DETAILS = {
@@ -16,7 +17,7 @@ const BPI_DETAILS = {
   branch: 'Makati Main Branch',
 }
 
-export function BPITransfer({ customerId, invoiceId }: BPITransferProps) {
+export function BPITransfer({ customerId, invoiceId, qrToken }: BPITransferProps) {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploaded, setUploaded] = useState(false)
@@ -45,6 +46,7 @@ export function BPITransfer({ customerId, invoiceId }: BPITransferProps) {
       formData.append('file', file)
       formData.append('customerId', String(customerId))
       formData.append('invoiceId', String(invoiceId))
+      if (qrToken) formData.append('qrToken', qrToken)
 
       const res = await fetch('/api/documents', {
         method: 'POST',

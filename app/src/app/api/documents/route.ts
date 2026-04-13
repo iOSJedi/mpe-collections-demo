@@ -5,12 +5,28 @@ import { documents, customers, invoices } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 
 // POST /api/documents — upload a payment proof document
-// Accepts multipart form data: file, customerId, invoiceId
+// Accepts multipart form data: file, customerId, invoiceId, qrToken (optional)
 // Stores file as Base64 in file_url for demo purposes
-// NOTE: Not wrapped in withAuth — payer portal uploads without Firebase auth (QR token access)
+// Auth: accepts Firebase Bearer token OR QR JWT token (for payer portal)
 export async function POST(request: NextRequest) {
   try {
+    // Auth: accept Firebase Bearer token OR QR JWT token in form data
+    const { verifyToken } = await import('@/lib/auth-middleware')
+    const { verifyQrToken } = await import('@/lib/jwt')
+    const firebaseUser = await verifyToken(request)
+
     const formData = await request.formData()
+    const qrToken = formData.get('qrToken') as string | null
+
+    if (!firebaseUser && !qrToken) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    if (!firebaseUser && qrToken) {
+      try { verifyQrToken(qrToken) } catch {
+        return NextResponse.json({ error: 'Invalid QR token' }, { status: 401 })
+      }
+    }
+
     const file = formData.get('file') as File | null
     const customerId = formData.get('customerId')
     const invoiceId = formData.get('invoiceId')

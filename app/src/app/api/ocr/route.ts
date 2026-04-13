@@ -7,12 +7,25 @@ import { extractPaymentDetails } from '@/lib/ocr'
 import { validateDocument } from '@/lib/validation'
 
 // POST /api/ocr — trigger OCR + validation for a document
-// Body: { documentId: number }
-// NOTE: Not wrapped in withAuth — payer portal triggers OCR after upload without Firebase auth
+// Body: { documentId: number, qrToken?: string }
+// Auth: accepts Firebase Bearer token OR QR JWT token (for payer portal)
 export async function POST(request: NextRequest) {
   try {
+    const { verifyToken } = await import('@/lib/auth-middleware')
+    const { verifyQrToken } = await import('@/lib/jwt')
+    const firebaseUser = await verifyToken(request)
+
     const body = await request.json()
-    const { documentId } = body
+    const { documentId, qrToken } = body
+
+    if (!firebaseUser && !qrToken) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    if (!firebaseUser && qrToken) {
+      try { verifyQrToken(qrToken) } catch {
+        return NextResponse.json({ error: 'Invalid QR token' }, { status: 401 })
+      }
+    }
 
     if (!documentId) {
       return NextResponse.json({ error: 'documentId is required' }, { status: 400 })
