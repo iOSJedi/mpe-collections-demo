@@ -33,17 +33,81 @@ function formatDate(dateStr: string | null | undefined): string {
 
 // ─── DocumentViewerDialog ────────────────────────────────────────────────────
 
-function DocumentViewerDialog({ doc }: { doc: DocumentRecord }) {
+function RunOcrButton({ documentId, onComplete }: { documentId: number; onComplete: () => void }) {
+  const [running, setRunning] = useState(false)
+
+  async function handleRunOcr(e: React.MouseEvent) {
+    e.stopPropagation()
+    setRunning(true)
+    try {
+      const res = await apiFetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(err.error ?? 'OCR failed')
+      } else {
+        onComplete()
+      }
+    } catch {
+      alert('OCR request failed')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleRunOcr}
+      disabled={running}
+      className="px-2 py-0.5 text-xs font-medium rounded border border-amber-400 text-amber-600 hover:bg-amber-50 transition-colors whitespace-nowrap disabled:opacity-50"
+    >
+      {running ? 'Running...' : 'Run OCR'}
+    </button>
+  )
+}
+
+function DocumentViewerDialog({ doc, onRefresh }: { doc: DocumentRecord; onRefresh: () => void }) {
   const [open, setOpen] = useState(false)
+  const [currentDoc, setCurrentDoc] = useState(doc)
+  const [ocrRunning, setOcrRunning] = useState(false)
+
+  // Keep in sync with parent
+  useState(() => { setCurrentDoc(doc) })
 
   const viewerDoc = {
-    documentId: doc.document_id,
-    fileUrl: doc.file_url,
-    fileName: doc.file_name,
-    fileType: doc.file_type,
-    ocrResult: doc.ocr_result,
-    ocrStatus: doc.ocr_status,
-    validationResult: doc.validation_result,
+    documentId: currentDoc.document_id,
+    fileUrl: currentDoc.file_url,
+    fileName: currentDoc.file_name,
+    fileType: currentDoc.file_type,
+    ocrResult: currentDoc.ocr_result,
+    ocrStatus: currentDoc.ocr_status,
+    validationResult: currentDoc.validation_result,
+  }
+
+  async function handleRunOcrInDialog() {
+    setOcrRunning(true)
+    try {
+      const res = await apiFetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: currentDoc.document_id }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        // Parse JSONB that may be double-encoded
+        let ocr = updated.ocr_result ?? updated.ocrResult
+        if (typeof ocr === 'string') try { ocr = JSON.parse(ocr) } catch {}
+        let val = updated.validation_result ?? updated.validationResult
+        if (typeof val === 'string') try { val = JSON.parse(val) } catch {}
+        setCurrentDoc({ ...currentDoc, ocr_result: ocr, validation_result: val, ocr_status: 'COMPLETED' })
+        onRefresh()
+      }
+    } catch {} finally {
+      setOcrRunning(false)
+    }
   }
 
   return (
@@ -61,16 +125,27 @@ function DocumentViewerDialog({ doc }: { doc: DocumentRecord }) {
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl focus:outline-none">
           <div className="flex items-center justify-between px-5 py-3 bg-[#1c1c2e] border-b border-[#2a2a3e]">
             <Dialog.Title className="text-sm font-semibold text-[#e0e0f0]">
-              Document Review — {doc.file_name}
+              Document Review — {currentDoc.file_name}
             </Dialog.Title>
-            <Dialog.Close asChild>
-              <button className="text-[#6666aa] hover:text-[#aaaacc] text-xl leading-none">&times;</button>
-            </Dialog.Close>
+            <div className="flex items-center gap-2">
+              {currentDoc.ocr_status === 'PENDING' && (
+                <button
+                  onClick={handleRunOcrInDialog}
+                  disabled={ocrRunning}
+                  className="px-3 py-1 text-xs font-medium rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+                >
+                  {ocrRunning ? 'Processing...' : 'Run AI Analysis'}
+                </button>
+              )}
+              <Dialog.Close asChild>
+                <button className="text-[#6666aa] hover:text-[#aaaacc] text-xl leading-none">&times;</button>
+              </Dialog.Close>
+            </div>
           </div>
           <DocumentViewer
             document={viewerDoc}
-            customerName={doc.customer_name}
-            invoiceNumber={doc.invoice_number ?? undefined}
+            customerName={currentDoc.customer_name}
+            invoiceNumber={currentDoc.invoice_number ?? undefined}
           />
         </Dialog.Content>
       </Dialog.Portal>
@@ -174,7 +249,12 @@ export function DocumentVerification() {
                       {formatDate(doc.uploaded_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <DocumentViewerDialog doc={doc} />
+                      <div className="flex items-center gap-1.5">
+                        <DocumentViewerDialog doc={doc} onRefresh={fetchDocs} />
+                        {doc.ocr_status === 'PENDING' && (
+                          <RunOcrButton documentId={doc.document_id} onComplete={fetchDocs} />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
