@@ -7,7 +7,8 @@ import { eq, and, sql } from 'drizzle-orm'
 // POST /api/documents — upload a payment proof document
 // Accepts multipart form data: file, customerId, invoiceId
 // Stores file as Base64 in file_url for demo purposes
-export const POST = withAuth(async (request: NextRequest) => {
+// NOTE: Not wrapped in withAuth — payer portal uploads without Firebase auth (QR token access)
+export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
@@ -53,7 +54,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     console.error('Failed to upload document:', error)
     return NextResponse.json({ error: 'Failed to upload document' }, { status: 500 })
   }
-})
+}
 
 // GET /api/documents — list documents with optional filters
 // Query params: customerId, ocrStatus

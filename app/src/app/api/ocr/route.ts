@@ -8,7 +8,8 @@ import { validateDocument } from '@/lib/validation'
 
 // POST /api/ocr — trigger OCR + validation for a document
 // Body: { documentId: number }
-export const POST = withAuth(async (request: NextRequest) => {
+// NOTE: Not wrapped in withAuth — payer portal triggers OCR after upload without Firebase auth
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { documentId } = body
@@ -140,4 +141,4 @@ export const POST = withAuth(async (request: NextRequest) => {
     console.error('Failed to run OCR:', error)
     return NextResponse.json({ error: 'Failed to run OCR' }, { status: 500 })
   }
-})
+}
