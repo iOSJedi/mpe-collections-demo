@@ -237,9 +237,9 @@ export default function DemoPage() {
               <p className="text-xs text-[#888] mb-3">Download these files, then upload them via the Emulator to show live AI analysis:</p>
               <div className="space-y-2">
                 {[
-                  { href: '/samples/deposit-slip-bpi-valid.svg', name: 'BPI Deposit Slip — Valid', desc: 'Pottery Barn, PHP 632,295 — all checks will pass' },
-                  { href: '/samples/deposit-slip-bpi-mismatch.svg', name: 'BPI Deposit Slip — Mismatches', desc: 'Wrong depositor (Maria Reyes) + wrong amount (500K vs 632K) — triggers AI mismatch alerts' },
-                  { href: '/samples/check-deposit-slip-metrobank.svg', name: 'Metrobank Check Deposit Slip', desc: 'Samsung Experience Store, CHK-2026-88712, PHP 838,072 — shows check-specific AI extraction' },
+                  { href: '/samples/deposit-slip-bpi-valid.png', name: 'BPI Deposit Slip — Valid', desc: 'Pottery Barn, PHP 632,295 — all checks will pass' },
+                  { href: '/samples/deposit-slip-bpi-mismatch.png', name: 'BPI Deposit Slip — Mismatches', desc: 'Wrong depositor (Maria Reyes) + wrong amount (500K vs 632K) — triggers AI mismatch alerts' },
+                  { href: '/samples/check-deposit-slip-metrobank.png', name: 'Metrobank Check Deposit Slip', desc: 'Samsung Experience Store, CHK-2026-88712, PHP 838,072 — shows check-specific AI extraction' },
                 ].map((f, i) => (
                   <a key={i} href={f.href} download className="flex items-start gap-3 p-3 rounded bg-[#1a1a2e] border border-[#333] hover:border-[#C5A930] transition-colors">
                     <span className="text-lg shrink-0">📄</span>
