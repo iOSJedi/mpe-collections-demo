@@ -220,15 +220,48 @@ export default function DemoPage() {
 
           {/* Act 8 */}
           <section id="act-8">
-            <ActHeader number={8} title="Document AI Analysis" time="2 min" color="#a78bfa" />
+            <ActHeader number={8} title="Document AI Analysis" time="3 min" color="#a78bfa" />
+
+            <SubSection title="8a. View seeded documents" />
             <Steps steps={[
               'Navigate to **Collections** → **Documents** tab',
-              'Click **View** on a document',
-              'Show side-by-side viewer: uploaded image (left) + AI-extracted fields (right)',
-              'Highlight: confidence score, match/mismatch indicators per field',
-              'Show action buttons: Confirm Payment / Flag for Review',
+              'Click **View** on a document — show the side-by-side viewer',
+              'Left: deposit slip image, Right: AI-extracted fields with match/mismatch indicators',
+              'Highlight the **confidence score** and **validation checks** (green = pass, red = fail)',
+              'Doc 2 has mismatches (wrong amount + third-party depositor) — show the red indicators',
             ]} />
-            <TalkingPoint text="Gemini Vision extracts and cross-references every field. Mismatches are flagged instantly — no manual checking of deposit slips." />
+
+            <SubSection title="8b. Live upload demo" />
+            <div className="mb-4 p-4 rounded-lg bg-[#111] border border-[#333]">
+              <p className="text-sm font-semibold text-[#C5A930] mb-3">Sample Deposit Slips for Demo Upload</p>
+              <p className="text-xs text-[#888] mb-3">Download these files, then upload them via the Emulator to show live AI analysis:</p>
+              <div className="space-y-2">
+                {[
+                  { href: '/samples/deposit-slip-bpi-valid.svg', name: 'BPI Deposit Slip — Valid', desc: 'Pottery Barn, PHP 632,295 — all checks will pass' },
+                  { href: '/samples/deposit-slip-bpi-mismatch.svg', name: 'BPI Deposit Slip — Mismatches', desc: 'Wrong depositor (Maria Reyes) + wrong amount (500K vs 632K) — triggers AI mismatch alerts' },
+                  { href: '/samples/check-deposit-slip-metrobank.svg', name: 'Metrobank Check Deposit Slip', desc: 'Samsung Experience Store, CHK-2026-88712, PHP 838,072 — shows check-specific AI extraction' },
+                ].map((f, i) => (
+                  <a key={i} href={f.href} download className="flex items-start gap-3 p-3 rounded bg-[#1a1a2e] border border-[#333] hover:border-[#C5A930] transition-colors">
+                    <span className="text-lg shrink-0">📄</span>
+                    <div>
+                      <span className="text-sm font-medium text-white">{f.name}</span>
+                      <p className="text-xs text-[#888] mt-0.5">{f.desc}</p>
+                    </div>
+                    <span className="ml-auto text-xs text-[#C5A930] shrink-0">Download</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+            <Steps steps={[
+              'Open the **Emulator** → **Payer** mode → select **Pottery Barn Philippines**',
+              'Go to **Upload** tab → drag or click to upload one of the sample deposit slips above',
+              'Watch the **AI processing** indicator — Gemini Vision extracts all fields in real-time',
+              'Show the OCR results: amount, date, depositor, bank, reference — all auto-extracted',
+              'Show validation: payer name matched, amount verified against invoice',
+              'Navigate to **Collections** → **Documents** → find the newly uploaded document',
+              'Click **View** → show the side-by-side viewer with the fresh AI analysis',
+            ]} />
+            <TalkingPoint text="Gemini Vision extracts and cross-references every field in seconds. Mismatches are flagged instantly — no manual checking of deposit slips." />
           </section>
 
           {/* Act 9 */}

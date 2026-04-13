@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500" viewBox="0 0 700 500">
+  <rect width="700" height="500" fill="#f5f5e8" rx="8"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="700" height="60" fill="#8b0000" rx="8 8 0 0"/>
+  <text x="350" y="35" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="bold" fill="white">METROPOLITAN BANK &amp; TRUST CO.</text>
+  <text x="350" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#ffcccc">BGC Branch — Check Deposit Slip</text>
+
+  <!-- Check type indicator -->
+  <rect x="40" y="75" width="120" height="25" rx="4" fill="#8b0000"/>
+  <text x="100" y="92" text-anchor="middle" font-family="Arial" font-size="11" font-weight="bold" fill="white">CHECK DEPOSIT</text>
+
+  <!-- Date -->
+  <rect x="40" y="110" width="620" height="40" rx="4" fill="white" stroke="#ccc"/>
+  <text x="55" y="135" font-family="Arial" font-size="12" fill="#888">Date:</text>
+  <text x="200" y="135" font-family="Arial" font-size="14" font-weight="bold" fill="#333">March 20, 2026</text>
+
+  <!-- Account details -->
+  <rect x="40" y="160" width="620" height="70" rx="4" fill="white" stroke="#ccc"/>
+  <text x="55" y="185" font-family="Arial" font-size="12" fill="#888">Payee / Account Name:</text>
+  <text x="250" y="185" font-family="Arial" font-size="14" font-weight="bold" fill="#333">Ayala Land Corporation</text>
+  <text x="55" y="215" font-family="Arial" font-size="12" fill="#888">Account No:</text>
+  <text x="250" y="215" font-family="Arial" font-size="14" font-weight="bold" fill="#333">987-654-321-0</text>
+
+  <!-- Check details -->
+  <rect x="40" y="240" width="620" height="70" rx="4" fill="#fff8e1" stroke="#ffc107"/>
+  <text x="55" y="265" font-family="Arial" font-size="12" fill="#888">Check No:</text>
+  <text x="250" y="265" font-family="Arial" font-size="14" font-weight="bold" fill="#333">CHK-2026-88712</text>
+  <text x="55" y="295" font-family="Arial" font-size="12" fill="#888">Issuing Bank:</text>
+  <text x="250" y="295" font-family="Arial" font-size="14" font-weight="bold" fill="#333">BDO Unibank — Makati Avenue Branch</text>
+
+  <!-- Depositor -->
+  <rect x="40" y="320" width="620" height="40" rx="4" fill="white" stroke="#ccc"/>
+  <text x="55" y="345" font-family="Arial" font-size="12" fill="#888">Depositor / Drawer:</text>
+  <text x="250" y="345" font-family="Arial" font-size="14" font-weight="bold" fill="#333">Samsung Experience Store Philippines</text>
+
+  <!-- Amount -->
+  <rect x="40" y="370" width="620" height="50" rx="4" fill="#e8f5e9" stroke="#4caf50"/>
+  <text x="55" y="400" font-family="Arial" font-size="12" fill="#888">Check Amount:</text>
+  <text x="250" y="402" font-family="Arial" font-size="24" font-weight="bold" fill="#1b5e20">PHP 838,072.00</text>
+
+  <!-- Clearing notice -->
+  <rect x="40" y="430" width="620" height="30" rx="4" fill="#fff3e0" stroke="#ff9800"/>
+  <text x="350" y="450" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="#e65100">CHECK CLEARING: 3 BUSINESS DAYS — Funds available on or after March 25, 2026</text>
+
+  <!-- Footer -->
+  <line x1="40" y1="475" x2="660" y2="475" stroke="#ddd"/>
+  <text x="350" y="492" text-anchor="middle" font-family="Arial" font-size="8" fill="#aaa">Metrobank Check Deposit Slip — Please retain this copy for your records.</text>
+</svg>
