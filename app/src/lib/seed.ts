@@ -952,7 +952,7 @@ export async function seedStage3() {
       fileUrl: makeDepositSlipSvg({ bank: 'BANK OF THE PHILIPPINE ISLANDS', date: 'November 14, 2025', depositor: 'Uniqlo Philippines Inc.', amount: '1,134,791.00', refNo: 'BPI-20251114-7842', accountName: 'Ayala Land Corporation', accountNo: '1234-5678-90' }),
       fileName: 'deposit_slip_nov2025.svg',
       fileType: 'image/svg+xml',
-      ocrResult: JSON.stringify({
+      ocrResult: {
         payment_amount: 1134791.00,
         payment_date: '2025-11-14',
         reference_number: 'BPI-20251114-7842',
@@ -960,9 +960,9 @@ export async function seedStage3() {
         payee_name: 'Ayala Land Corporation',
         payer_name: 'Uniqlo Philippines Inc.',
         document_type: 'deposit_slip',
-      }),
+      },
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({
+      validationResult: {
         is_valid: true,
         checks: [
           { check: 'AMOUNT_MATCH', passed: true, expected: '1,134,791.00', actual: '1,134,791.00', severity: 'critical' },
@@ -970,7 +970,7 @@ export async function seedStage3() {
           { check: 'DATE_CHECK', passed: true, expected: '2025-11-14', actual: '2025-11-14', severity: 'warning' },
           { check: 'DUPLICATE_CHECK', passed: true, expected: 'No duplicate', actual: 'No duplicate', severity: 'critical' },
         ],
-      }),
+      },
     },
     {
       customerId: paidInvDocs[1]?.customer_id ?? allCustomers[1].customerId!,
@@ -979,7 +979,7 @@ export async function seedStage3() {
       fileUrl: makeDepositSlipSvg({ bank: 'BANK OF THE PHILIPPINE ISLANDS', date: 'December 12, 2025', depositor: 'Juan Santos', amount: '940,433.00', refNo: 'BPI-20251212-3391', accountName: 'Ayala Land Corporation', accountNo: '1234-5678-90' }),
       fileName: 'deposit_slip_dec2025.svg',
       fileType: 'image/svg+xml',
-      ocrResult: JSON.stringify({
+      ocrResult: {
         payment_amount: 940433.00,
         payment_date: '2025-12-12',
         reference_number: 'BPI-20251212-3391',
@@ -987,9 +987,9 @@ export async function seedStage3() {
         payee_name: 'Ayala Land Corporation',
         payer_name: 'Juan Santos',
         document_type: 'deposit_slip',
-      }),
+      },
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({
+      validationResult: {
         is_valid: false,
         checks: [
           { check: 'AMOUNT_MATCH', passed: false, expected: '1,134,791.00', actual: '940,433.00', severity: 'critical' },
@@ -997,7 +997,7 @@ export async function seedStage3() {
           { check: 'DATE_CHECK', passed: true, expected: '2025-12-12', actual: '2025-12-12', severity: 'warning' },
           { check: 'DUPLICATE_CHECK', passed: true, expected: 'No duplicate', actual: 'No duplicate', severity: 'critical' },
         ],
-      }),
+      },
     },
     {
       customerId: cust12[0]?.customer_id ?? cust2[0]?.customer_id ?? allCustomers[2].customerId!,
@@ -1006,7 +1006,7 @@ export async function seedStage3() {
       fileUrl: makeDepositSlipSvg({ bank: 'METROBANK', date: 'February 3, 2026', depositor: 'JP Morgan Chase Bank N.A.', amount: '518,688.30', refNo: 'MBK-20260203-0091', accountName: 'Ayala Land Corporation', accountNo: '987-654-321' }),
       fileName: 'deposit_slip_feb2026.svg',
       fileType: 'image/svg+xml',
-      ocrResult: JSON.stringify({
+      ocrResult: {
         payment_amount: 518688.30,
         payment_date: '2026-02-03',
         reference_number: 'MBK-20260203-0091',
@@ -1014,9 +1014,9 @@ export async function seedStage3() {
         payee_name: 'Ayala Land Corporation',
         payer_name: 'JP Morgan Chase Bank N.A.',
         document_type: 'deposit_slip',
-      }),
+      },
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({
+      validationResult: {
         is_valid: false,
         checks: [
           { check: 'AMOUNT_MATCH', passed: true, expected: '518,688.30', actual: '518,688.30', severity: 'critical' },
@@ -1024,7 +1024,7 @@ export async function seedStage3() {
           { check: 'DATE_CHECK', passed: true, expected: '2026-02-03', actual: '2026-02-03', severity: 'warning' },
           { check: 'DUPLICATE_CHECK', passed: false, expected: 'No duplicate', actual: 'Reference MBK-20260203-0091 already exists', severity: 'critical' },
         ],
-      }),
+      },
     },
   ]
 

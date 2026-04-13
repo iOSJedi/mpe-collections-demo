@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth-middleware'
 import { db } from '@/db'
 import { documents, customers, invoices } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 
 // POST /api/documents — upload a payment proof document
 // Accepts multipart form data: file, customerId, invoiceId
@@ -71,25 +71,35 @@ export const GET = withAuth(async (request: NextRequest) => {
       conditions.push(eq(documents.ocrStatus, ocrStatusParam))
     }
 
-    const rows = await db
-      .select({
-        document_id: documents.documentId,
-        customer_name: customers.name,
-        invoice_number: invoices.invoiceNumber,
-        payment_id: documents.paymentId,
-        file_url: documents.fileUrl,
-        file_name: documents.fileName,
-        file_type: documents.fileType,
-        ocr_status: documents.ocrStatus,
-        ocr_result: documents.ocrResult,
-        validation_result: documents.validationResult,
-        uploaded_at: documents.uploadedAt,
-      })
-      .from(documents)
-      .innerJoin(customers, eq(documents.customerId, customers.customerId))
-      .leftJoin(invoices, eq(documents.invoiceId, invoices.invoiceId))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(documents.uploadedAt)
+    // Use raw SQL to avoid pg-proxy column ordering issues and handle JSONB properly
+    const whereParts: string[] = []
+    if (customerIdParam) whereParts.push(`d.customer_id = ${Number(customerIdParam)}`)
+    if (ocrStatusParam) whereParts.push(`d.ocr_status = '${ocrStatusParam.replace(/'/g, "''")}'`)
+    const whereClause = whereParts.length > 0 ? `WHERE ${whereParts.join(' AND ')}` : ''
+
+    const result = await db.execute(sql.raw(`SELECT d.document_id, c.name as customer_name, i.invoice_number, d.payment_id, d.file_url, d.file_name, d.file_type, d.ocr_status, d.ocr_result, d.validation_result, d.uploaded_at FROM documents_col d JOIN customers_col c ON c.customer_id = d.customer_id LEFT JOIN invoices_col i ON i.invoice_id = d.invoice_id ${whereClause} ORDER BY d.uploaded_at`))
+    const rows = (result as unknown as any[]).map(r => {
+      // Parse JSONB fields that may be double-encoded strings from the proxy
+      let ocr = r.ocr_result
+      if (typeof ocr === 'string') { try { ocr = JSON.parse(ocr) } catch {} }
+      if (typeof ocr === 'string') { try { ocr = JSON.parse(ocr) } catch {} }
+      let val = r.validation_result
+      if (typeof val === 'string') { try { val = JSON.parse(val) } catch {} }
+      if (typeof val === 'string') { try { val = JSON.parse(val) } catch {} }
+      return {
+        document_id: r.document_id,
+        customer_name: r.customer_name,
+        invoice_number: r.invoice_number,
+        payment_id: r.payment_id,
+        file_url: r.file_url,
+        file_name: r.file_name,
+        file_type: r.file_type,
+        ocr_status: r.ocr_status,
+        ocr_result: ocr,
+        validation_result: val,
+        uploaded_at: String(r.uploaded_at ?? ''),
+      }
+    })
 
     return NextResponse.json(rows)
   } catch (error) {
