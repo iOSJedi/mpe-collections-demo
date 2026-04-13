@@ -40,3 +40,23 @@ export function setInCache(key: string, data: unknown, ttlMs = 30_000): void {
     if (oldest) memCache.delete(oldest)
   }
 }
+
+/**
+ * Invalidate cache entries matching a prefix.
+ * Call after mutations (approve, reject, submit, etc.) to ensure
+ * the next GET returns fresh data.
+ */
+export function invalidateCache(prefix: string): void {
+  for (const key of memCache.keys()) {
+    if (key.startsWith(prefix)) {
+      memCache.delete(key)
+    }
+  }
+}
+
+/**
+ * Clear the entire cache. Used after seed or bulk operations.
+ */
+export function clearCache(): void {
+  memCache.clear()
+}

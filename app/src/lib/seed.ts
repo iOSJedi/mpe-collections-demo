@@ -938,51 +938,93 @@ export async function seedStage3() {
     LIMIT 1
   `)) as unknown as OverdueInvRow[]
 
+  // Generate base64 SVG deposit slip images for realistic rendering
+  function makeDepositSlipSvg(opts: { bank: string; date: string; depositor: string; amount: string; refNo: string; accountName: string; accountNo: string }): string {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#f5f5e8" rx="8"/><text x="300" y="35" text-anchor="middle" font-family="serif" font-size="18" font-weight="bold" fill="#1a3a6b">${opts.bank}</text><text x="300" y="55" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#666">Makati Main Branch</text><line x1="40" y1="70" x2="560" y2="70" stroke="#ccc"/><text x="50" y="100" font-family="sans-serif" font-size="12" fill="#888">Date:</text><text x="200" y="100" font-family="sans-serif" font-size="12" font-weight="bold" fill="#333">${opts.date}</text><text x="50" y="130" font-family="sans-serif" font-size="12" fill="#888">Account Name:</text><text x="200" y="130" font-family="sans-serif" font-size="12" font-weight="bold" fill="#333">${opts.accountName}</text><text x="50" y="160" font-family="sans-serif" font-size="12" fill="#888">Account No:</text><text x="200" y="160" font-family="sans-serif" font-size="12" font-weight="bold" fill="#333">${opts.accountNo}</text><text x="50" y="200" font-family="sans-serif" font-size="12" fill="#888">Depositor:</text><text x="200" y="200" font-family="sans-serif" font-size="12" font-weight="bold" fill="#333">${opts.depositor}</text><rect x="40" y="220" width="520" height="50" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="1"/><text x="50" y="250" font-family="sans-serif" font-size="12" fill="#888">Amount:</text><text x="200" y="252" font-family="sans-serif" font-size="20" font-weight="bold" fill="#1b5e20">PHP ${opts.amount}</text><text x="50" y="300" font-family="sans-serif" font-size="12" fill="#888">Reference No:</text><text x="200" y="300" font-family="sans-serif" font-size="12" font-weight="bold" fill="#333">${opts.refNo}</text><line x1="40" y1="330" x2="560" y2="330" stroke="#ccc"/><text x="300" y="355" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#999">— Machine Validated —</text></svg>`
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
+  }
+
   const docRows: (typeof schema.documents.$inferInsert)[] = [
     {
       customerId: paidInvDocs[0]?.customer_id ?? allCustomers[0].customerId!,
       invoiceId: paidInvDocs[0]?.invoice_id,
       paymentId: paidInvDocs[0]?.payment_id ?? null,
-      fileUrl: 'https://storage.ayalaland.com/docs/payment-receipts/receipt-001.pdf',
-      fileName: 'payment_receipt_oct2025.pdf',
-      fileType: 'application/pdf',
+      fileUrl: makeDepositSlipSvg({ bank: 'BANK OF THE PHILIPPINE ISLANDS', date: 'November 14, 2025', depositor: 'Uniqlo Philippines Inc.', amount: '1,134,791.00', refNo: 'BPI-20251114-7842', accountName: 'Ayala Land Corporation', accountNo: '1234-5678-90' }),
+      fileName: 'deposit_slip_nov2025.svg',
+      fileType: 'image/svg+xml',
       ocrResult: JSON.stringify({
-        extractedText: 'OFFICIAL RECEIPT\nDate: November 14, 2025\nReceived from: Globe Telecom Inc.\nAmount: PHP 1,125,000.00\nFor: Rental payment — One Ayala East Tower 20F October 2025',
-        confidence: 0.97,
-        fields: { payerName: 'Globe Telecom Inc.', amount: 1125000.00, date: '2025-11-14', purpose: 'Rental payment' },
+        payment_amount: 1134791.00,
+        payment_date: '2025-11-14',
+        reference_number: 'BPI-20251114-7842',
+        bank_name: 'Bank of the Philippine Islands',
+        payee_name: 'Ayala Land Corporation',
+        payer_name: 'Uniqlo Philippines Inc.',
+        document_type: 'deposit_slip',
       }),
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({ status: 'VALID', matchedInvoice: true, amountMatches: true, payerMatches: true }),
+      validationResult: JSON.stringify({
+        is_valid: true,
+        checks: [
+          { check: 'AMOUNT_MATCH', passed: true, expected: '1,134,791.00', actual: '1,134,791.00', severity: 'critical' },
+          { check: 'PAYER_MATCH', passed: true, expected: 'Uniqlo Philippines Inc.', actual: 'Uniqlo Philippines Inc.', severity: 'critical' },
+          { check: 'DATE_CHECK', passed: true, expected: '2025-11-14', actual: '2025-11-14', severity: 'warning' },
+          { check: 'DUPLICATE_CHECK', passed: true, expected: 'No duplicate', actual: 'No duplicate', severity: 'critical' },
+        ],
+      }),
     },
     {
       customerId: paidInvDocs[1]?.customer_id ?? allCustomers[1].customerId!,
       invoiceId: paidInvDocs[1]?.invoice_id,
       paymentId: paidInvDocs[1]?.payment_id ?? null,
-      fileUrl: 'https://storage.ayalaland.com/docs/payment-receipts/receipt-002.pdf',
-      fileName: 'bank_transfer_confirmation_nov2025.pdf',
-      fileType: 'application/pdf',
+      fileUrl: makeDepositSlipSvg({ bank: 'BANK OF THE PHILIPPINE ISLANDS', date: 'December 12, 2025', depositor: 'Juan Santos', amount: '940,433.00', refNo: 'BPI-20251212-3391', accountName: 'Ayala Land Corporation', accountNo: '1234-5678-90' }),
+      fileName: 'deposit_slip_dec2025.svg',
+      fileType: 'image/svg+xml',
       ocrResult: JSON.stringify({
-        extractedText: 'BANK TRANSFER CONFIRMATION\nDate: December 12, 2025\nBeneficiary: Ayala Land Inc.\nAmount: PHP 2,250,000.00\nReference: TRF-2025121200045\nSender: IKEA Philippines',
-        confidence: 0.94,
-        fields: { payerName: 'IKEA Philippines', amount: 2250000.00, date: '2025-12-12', referenceNumber: 'TRF-2025121200045' },
+        payment_amount: 940433.00,
+        payment_date: '2025-12-12',
+        reference_number: 'BPI-20251212-3391',
+        bank_name: 'Bank of the Philippine Islands',
+        payee_name: 'Ayala Land Corporation',
+        payer_name: 'Juan Santos',
+        document_type: 'deposit_slip',
       }),
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({ status: 'VALID', matchedInvoice: true, amountMatches: true, payerMatches: true }),
+      validationResult: JSON.stringify({
+        is_valid: false,
+        checks: [
+          { check: 'AMOUNT_MATCH', passed: false, expected: '1,134,791.00', actual: '940,433.00', severity: 'critical' },
+          { check: 'PAYER_MATCH', passed: false, expected: 'Uniqlo Philippines Inc.', actual: 'Juan Santos', severity: 'critical' },
+          { check: 'DATE_CHECK', passed: true, expected: '2025-12-12', actual: '2025-12-12', severity: 'warning' },
+          { check: 'DUPLICATE_CHECK', passed: true, expected: 'No duplicate', actual: 'No duplicate', severity: 'critical' },
+        ],
+      }),
     },
     {
       customerId: cust12[0]?.customer_id ?? cust2[0]?.customer_id ?? allCustomers[2].customerId!,
       invoiceId: overdueForCust12[0]?.invoice_id ?? null,
       paymentId: null,
-      fileUrl: 'https://storage.ayalaland.com/docs/disputes/dispute-letter-001.pdf',
-      fileName: 'dispute_letter_jpmorgan_jan2026.pdf',
-      fileType: 'application/pdf',
+      fileUrl: makeDepositSlipSvg({ bank: 'METROBANK', date: 'February 3, 2026', depositor: 'JP Morgan Chase Bank N.A.', amount: '518,688.30', refNo: 'MBK-20260203-0091', accountName: 'Ayala Land Corporation', accountNo: '987-654-321' }),
+      fileName: 'deposit_slip_feb2026.svg',
+      fileType: 'image/svg+xml',
       ocrResult: JSON.stringify({
-        extractedText: 'FORMAL LETTER OF DISPUTE\nDate: February 3, 2026\nTo: Ayala Land Inc. Property Management\nRe: Invoice ALI-INV-2026-001 — We wish to dispute the service charges...',
-        confidence: 0.91,
-        fields: { letterType: 'DISPUTE', sender: 'JP Morgan Chase Bank N.A.', date: '2026-02-03', subject: 'Invoice dispute' },
+        payment_amount: 518688.30,
+        payment_date: '2026-02-03',
+        reference_number: 'MBK-20260203-0091',
+        bank_name: 'Metrobank',
+        payee_name: 'Ayala Land Corporation',
+        payer_name: 'JP Morgan Chase Bank N.A.',
+        document_type: 'deposit_slip',
       }),
       ocrStatus: 'COMPLETED',
-      validationResult: JSON.stringify({ status: 'DISPUTED', requiresReview: true, disputeType: 'SERVICE_CHARGE', escalationRequired: true }),
+      validationResult: JSON.stringify({
+        is_valid: false,
+        checks: [
+          { check: 'AMOUNT_MATCH', passed: true, expected: '518,688.30', actual: '518,688.30', severity: 'critical' },
+          { check: 'PAYER_MATCH', passed: true, expected: 'JP Morgan Chase Bank N.A.', actual: 'JP Morgan Chase Bank N.A.', severity: 'critical' },
+          { check: 'DATE_CHECK', passed: true, expected: '2026-02-03', actual: '2026-02-03', severity: 'warning' },
+          { check: 'DUPLICATE_CHECK', passed: false, expected: 'No duplicate', actual: 'Reference MBK-20260203-0091 already exists', severity: 'critical' },
+        ],
+      }),
     },
   ]
 
