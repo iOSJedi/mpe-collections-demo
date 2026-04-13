@@ -106,11 +106,23 @@ export function CheckPaymentFlow({ customerId, amount, invoiceId, onComplete, qr
       if (paymentId) formData.append('paymentId', String(paymentId))
       if (qrToken) formData.append('qrToken', qrToken)
 
-      await fetch('/api/documents', {
+      const docRes = await fetch('/api/documents', {
         method: 'POST',
         body: formData,
       })
-      // Non-fatal if upload fails — payment is already recorded
+
+      // Trigger OCR if upload succeeded
+      if (docRes.ok) {
+        const doc = await docRes.json()
+        const docId = doc.documentId ?? doc.document_id
+        if (docId) {
+          await fetch('/api/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documentId: docId, qrToken }),
+          }).catch(() => {}) // non-fatal
+        }
+      }
 
       setStep('success')
     } catch {

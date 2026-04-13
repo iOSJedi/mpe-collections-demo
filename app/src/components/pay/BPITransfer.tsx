@@ -59,6 +59,17 @@ export function BPITransfer({ customerId, invoiceId, qrToken }: BPITransferProps
         return
       }
 
+      // Trigger OCR processing
+      const doc = await res.json()
+      const docId = doc.documentId ?? doc.document_id
+      if (docId) {
+        await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentId: docId, qrToken }),
+        }).catch(() => {}) // non-fatal if OCR fails
+      }
+
       setUploaded(true)
     } catch {
       setError('Failed to upload receipt. Please try again.')
