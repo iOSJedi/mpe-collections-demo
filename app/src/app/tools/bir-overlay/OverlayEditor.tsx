@@ -129,19 +129,24 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
 
             const align = c.align ?? 'left'
             const alignShift = align === 'right' ? '-100%' : align === 'center' ? '-50%' : '0'
+            // pdf-lib anchors drawText at the baseline. In CSS, baseline ≈ 80 % down
+            // the line-box at line-height:1. So after anchoring the marker's BOTTOM
+            // at y, we nudge it DOWN by 0.2em so the text baseline lands on y —
+            // matching the PDF renderer exactly.
             const baseStyle: React.CSSProperties = {
               position: 'absolute', left, top,
-              transform: `translateY(-100%) translateX(${alignShift})`,
+              transform: `translate(${alignShift}, calc(-100% + 0.2em))`,
               fontSize: (c.size ?? 10) * displayScale,
               fontFamily: c.monospace ? '"Courier New", Courier, monospace' : 'Helvetica, Arial, sans-serif',
               fontWeight: c.bold !== false ? 700 : 400,
+              lineHeight: 1,
               color: '#0052cc',
               background: isSel ? 'rgba(0,82,204,0.25)' : 'rgba(0,82,204,0.08)',
               border: `1px ${isSel ? 'solid' : 'dashed'} rgba(0,82,204,0.8)`,
               cursor: dragging?.key === key ? 'grabbing' : 'grab',
               whiteSpace: 'nowrap',
               userSelect: 'none',
-              padding: pitched ? 0 : '1px 4px',
+              padding: 0,
             }
 
             if (pitched) {
