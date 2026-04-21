@@ -6,6 +6,10 @@ import { renderBir2307Pdf } from '@/lib/cwt/pdf'
 // an override coord map in the request body — but since COORDS is imported at
 // module load, overrides require a save + page refresh. The body is ignored;
 // this route just renders the current on-disk coord map.
+export async function GET() {
+  return POST(new Request('http://localhost') as NextRequest)
+}
+
 export async function POST(_req: NextRequest) {
   const bytes = await renderBir2307Pdf({
     periodStart: '2026-04-01',
