@@ -21,7 +21,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           <div className="text-sm text-slate-500">Reference</div>
           <div className="text-2xl font-mono">{c.referenceNumber}</div>
         </div>
-        <TenantInboxPreview tenantEmail={tenantEmail} referenceNumber={c.referenceNumber} />
+        <div className="flex items-center gap-3">
+          {c.pdfUrl && (
+            <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer"
+               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded shadow-sm">
+              View real BIR 2307 form →
+            </a>
+          )}
+          <TenantInboxPreview tenantEmail={tenantEmail} referenceNumber={c.referenceNumber} />
+        </div>
       </div>
       <Bir2307Preview
         data={{

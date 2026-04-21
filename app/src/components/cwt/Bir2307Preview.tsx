@@ -105,8 +105,13 @@ export function Bir2307Preview({ data, pdfDataUrl }: { data?: Bir2307Data; pdfDa
             <div className="text-[11px] text-slate-600">for {data.payorName}</div>
           </div>
           {pdfDataUrl && (
-            <a href={pdfDataUrl} download={`BIR-2307-${data.referenceNumber}.pdf`}
-               className="text-[11px] text-blue-600 hover:underline">Download PDF →</a>
+            <div className="flex items-center gap-3 text-[11px]">
+              <a href={pdfDataUrl} target="_blank" rel="noopener noreferrer"
+                 className="text-blue-600 hover:underline font-medium">View real BIR 2307 form →</a>
+              <span className="text-slate-300">|</span>
+              <a href={pdfDataUrl} download={`BIR-2307-${data.referenceNumber}.pdf`}
+                 className="text-slate-500 hover:text-slate-900 hover:underline">Download PDF</a>
+            </div>
           )}
         </div>
       </section>
