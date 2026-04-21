@@ -58,13 +58,18 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
     const c = coords[key]
     if (!c || c.size === 0) return
     const bold = c.bold !== false
-    page.drawText(text, {
-      x: c.x,
-      y: PDF_SIZE.height - c.y,
-      font: bold ? helvBold : helv,
-      size: c.size ?? 10,
-      color,
-    })
+    const font = bold ? helvBold : helv
+    const size = c.size ?? 10
+    const yPt = PDF_SIZE.height - c.y
+
+    if (c.charPitch && c.charPitch > 0) {
+      // Fixed-pitch: draw each character at (x + i * charPitch, y)
+      for (let i = 0; i < text.length; i++) {
+        page.drawText(text[i], { x: c.x + i * c.charPitch, y: yPt, font, size, color })
+      }
+    } else {
+      page.drawText(text, { x: c.x, y: yPt, font, size, color })
+    }
   }
 
   const from = mmddyyyy(data.periodStart)
@@ -77,19 +82,19 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
   drawAt('periodToYYYY', to.slice(6, 10))
 
   const [pa, pb, pc, pd] = splitTin(data.payeeTin)
-  drawAt('payeeTin1', spaced(pa))
-  drawAt('payeeTin2', spaced(pb))
-  drawAt('payeeTin3', spaced(pc))
-  drawAt('payeeTin4', spaced(pd))
+  drawAt('payeeTin1', pa)
+  drawAt('payeeTin2', pb)
+  drawAt('payeeTin3', pc)
+  drawAt('payeeTin4', pd)
   drawAt('payeeName', data.payeeName.toUpperCase())
   drawAt('payeeAddress', data.payeeAddress)
   drawAt('payeeZip', data.payeeZipCode)
 
   const [xa, xb, xc, xd] = splitTin(data.payorTin)
-  drawAt('payorTin1', spaced(xa))
-  drawAt('payorTin2', spaced(xb))
-  drawAt('payorTin3', spaced(xc))
-  drawAt('payorTin4', spaced(xd))
+  drawAt('payorTin1', xa)
+  drawAt('payorTin2', xb)
+  drawAt('payorTin3', xc)
+  drawAt('payorTin4', xd)
   drawAt('payorName', data.payorName.toUpperCase())
   drawAt('payorAddress', data.payorAddress)
   drawAt('payorZip', data.payorZipCode)

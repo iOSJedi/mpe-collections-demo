@@ -9,9 +9,9 @@ const BG_SCALE = 2.5  // PNG native scale
 
 // Sample preview values drawn inside each draggable marker
 const SAMPLES: Record<string, string> = {
-  periodFromMM: '04', periodFromDD: '01', periodFromYYYY: '2026',
-  periodToMM: '04', periodToDD: '30', periodToYYYY: '2026',
-  payeeTin1: '000', payeeTin2: '000', payeeTin3: '000', payeeTin4: '000',
+  periodFromMM: '04', periodFromDD: '30', periodFromYYYY: '2026',
+  periodToMM: '05', periodToDD: '31', periodToYYYY: '2026',
+  payeeTin1: '000', payeeTin2: '111', payeeTin3: '222', payeeTin4: '000',
   payeeName: 'AYALA LAND, INC.',
   payeeAddress: 'Tower One, Ayala Triangle, Makati City',
   payeeZip: '1226',
@@ -124,26 +124,43 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
           {Object.entries(coords).map(([key, c]) => {
             const { left, top } = toCss(c)
             const isSel = selected === key
+            const sample = SAMPLES[key] ?? c.label
+            const pitched = (c.charPitch ?? 0) > 0
+
+            const baseStyle: React.CSSProperties = {
+              position: 'absolute', left, top,
+              transform: 'translateY(-100%)',
+              fontSize: (c.size ?? 10) * displayScale,
+              fontFamily: 'Helvetica, Arial, sans-serif',
+              fontWeight: c.bold !== false ? 700 : 400,
+              color: '#0052cc',
+              background: isSel ? 'rgba(0,82,204,0.25)' : 'rgba(0,82,204,0.08)',
+              border: `1px ${isSel ? 'solid' : 'dashed'} rgba(0,82,204,0.8)`,
+              cursor: dragging?.key === key ? 'grabbing' : 'grab',
+              whiteSpace: 'nowrap',
+              userSelect: 'none',
+              padding: pitched ? 0 : '1px 4px',
+            }
+
+            if (pitched) {
+              // Each character gets its own cell at exactly charPitch px
+              const pxPitch = (c.charPitch ?? 0) * displayScale
+              return (
+                <div key={key} onPointerDown={(e) => onPointerDown(e, key)} style={baseStyle}>
+                  {sample.split('').map((ch, i) => (
+                    <span key={i} style={{
+                      display: 'inline-block',
+                      width: pxPitch,
+                      textAlign: 'center',
+                    }}>{ch}</span>
+                  ))}
+                </div>
+              )
+            }
+
             return (
-              <div
-                key={key}
-                onPointerDown={(e) => onPointerDown(e, key)}
-                style={{
-                  position: 'absolute', left, top,
-                  transform: 'translateY(-100%)',
-                  padding: '1px 4px',
-                  fontSize: (c.size ?? 10) * displayScale,
-                  fontFamily: 'Helvetica, Arial, sans-serif',
-                  fontWeight: c.bold !== false ? 700 : 400,
-                  color: '#0052cc',
-                  background: isSel ? 'rgba(0,82,204,0.25)' : 'rgba(0,82,204,0.08)',
-                  border: `1px ${isSel ? 'solid' : 'dashed'} rgba(0,82,204,0.8)`,
-                  cursor: dragging?.key === key ? 'grabbing' : 'grab',
-                  whiteSpace: 'nowrap',
-                  userSelect: 'none',
-                }}
-              >
-                {SAMPLES[key] ?? c.label}
+              <div key={key} onPointerDown={(e) => onPointerDown(e, key)} style={baseStyle}>
+                {sample}
               </div>
             )
           })}
@@ -201,11 +218,23 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
                        onChange={e => setField(selected, 'size', Number(e.target.value))}
                        className="w-full border rounded px-2 py-1 text-sm font-mono" />
               </label>
-              <label className="text-xs flex items-center gap-2 mt-4">
+              <label className="text-xs">
+                <div className="text-slate-500 flex items-center justify-between">
+                  <span>char pitch (pt)</span>
+                  <span className="text-[10px] text-slate-400">0 = off</span>
+                </div>
+                <input type="number" step={0.5} min={0} value={sel.charPitch ?? 0}
+                       onChange={e => setField(selected, 'charPitch', Number(e.target.value) || undefined)}
+                       className="w-full border rounded px-2 py-1 text-sm font-mono" />
+              </label>
+              <label className="text-xs flex items-center gap-2 mt-4 col-span-2">
                 <input type="checkbox" checked={sel.bold !== false}
                        onChange={e => setField(selected, 'bold', e.target.checked ? undefined : false)} />
                 <span>Bold</span>
               </label>
+            </div>
+            <div className="mt-2 text-[10px] text-slate-500 leading-tight">
+              <strong>Tip:</strong> set char pitch for TIN / date / ATC fields where each character must align to a form box. Arrow keys nudge x/y; use the input here for pitch.
             </div>
           </div>
         )}
@@ -216,7 +245,9 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
             <button key={key} onClick={() => setSelected(key)}
                     className={`w-full text-left px-4 py-2 text-sm border-b hover:bg-slate-50 ${selected === key ? 'bg-blue-50 border-l-2 border-l-blue-600' : ''}`}>
               <div className="font-medium">{c.label}</div>
-              <div className="text-xs text-slate-500 font-mono">x={c.x} · y={c.y} · {c.size ?? 10}pt</div>
+              <div className="text-xs text-slate-500 font-mono">
+                x={c.x} · y={c.y} · {c.size ?? 10}pt{c.charPitch ? ` · pitch ${c.charPitch}` : ''}
+              </div>
             </button>
           ))}
         </div>
