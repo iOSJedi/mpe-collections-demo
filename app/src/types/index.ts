@@ -273,6 +273,8 @@ export interface EmulatorState {
   // Supplier mode
   selectedSupplierId: number | null
   selectedPoId: number | null
+  // CWT demo toasts
+  toasts: { id: number; text: string }[]
 }
 
 // ─── Penalty & Allocation Types ─────────────────────────────

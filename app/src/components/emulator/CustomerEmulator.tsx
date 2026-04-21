@@ -7,6 +7,8 @@ import {
   closeEmulator,
   setSelectedCustomer,
   setActiveTab,
+  pushToast,
+  clearToasts,
 } from '@/store/slices/emulatorSlice'
 import type { CustomerSummary } from '@/types'
 import { apiFetch } from '@/lib/api'
@@ -69,6 +71,22 @@ export function CustomerEmulator() {
 
   const handleTabChange = (tab: TabId) => {
     dispatch(setActiveTab(tab))
+  }
+
+  const simulateCwt = async () => {
+    dispatch(clearToasts())
+    const res = await fetch('/api/demo/simulate-cwt-payment', { method: 'POST' })
+    const data = await res.json()
+    if (data?.timings) {
+      for (const t of data.timings as { at: number; toast: string }[]) {
+        setTimeout(() => dispatch(pushToast({ text: t.toast })), t.at)
+      }
+    }
+  }
+
+  const resetCwtDemo = async () => {
+    await fetch('/api/demo/reset-cwt-demo', { method: 'POST' })
+    dispatch(clearToasts())
   }
 
   return (
@@ -215,6 +233,26 @@ export function CustomerEmulator() {
                   )}
                 </>
               )}
+            </div>
+
+            {/* CWT Demo */}
+            <div className="px-3 pb-3 shrink-0">
+              <div className="border-t pt-3 mt-1 space-y-2">
+                <div className="text-xs uppercase text-slate-400">CWT demo</div>
+                <button
+                  onClick={simulateCwt}
+                  className="w-full rounded py-1.5 text-xs font-semibold text-white transition-opacity"
+                  style={{ backgroundColor: '#C5A930' }}
+                >
+                  Simulate: corporate rent payment (net of CWT)
+                </button>
+                <button
+                  onClick={resetCwtDemo}
+                  className="w-full rounded border border-slate-300 py-1 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  Reset demo tenant
+                </button>
+              </div>
             </div>
           </>
         )}

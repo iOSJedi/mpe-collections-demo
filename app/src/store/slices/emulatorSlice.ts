@@ -9,6 +9,7 @@ const initialState: EmulatorState = {
   selectedInvoiceId: null,
   selectedSupplierId: null,
   selectedPoId: null,
+  toasts: [],
 }
 
 const emulatorSlice = createSlice({
@@ -38,6 +39,12 @@ const emulatorSlice = createSlice({
     setSelectedPo(state, action: PayloadAction<number | null>) {
       state.selectedPoId = action.payload
     },
+    pushToast(state, action: PayloadAction<{ text: string }>) {
+      state.toasts.push({ id: Date.now() + Math.random(), text: action.payload.text })
+    },
+    clearToasts(state) {
+      state.toasts = []
+    },
   },
 })
 
@@ -45,5 +52,6 @@ export const {
   toggleEmulator, openEmulator, closeEmulator, setEmulatorMode,
   setSelectedCustomer, setActiveTab, setSelectedInvoice,
   setSelectedSupplier, setSelectedPo,
+  pushToast, clearToasts,
 } = emulatorSlice.actions
 export default emulatorSlice.reducer
