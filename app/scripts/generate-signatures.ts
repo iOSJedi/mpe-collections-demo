@@ -2,6 +2,7 @@ import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
+import type * as React from 'react'
 
 const SIGNATORIES = [
   'Juan Dela Cruz', 'Maria Santos', 'Jose Reyes', 'Ana Garcia',
@@ -16,7 +17,8 @@ async function main() {
 
   for (let i = 0; i < SIGNATORIES.length; i++) {
     const svg = await satori(
-      {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ({
         type: 'div',
         props: {
           style: {
@@ -26,7 +28,7 @@ async function main() {
           },
           children: SIGNATORIES[i],
         },
-      },
+      } as unknown as React.ReactNode),
       { width: 400, height: 120, fonts: [{ name: 'Caveat', data: fontBytes, weight: 400, style: 'normal' }] }
     )
     const png = new Resvg(svg, { fitTo: { mode: 'width', value: 400 } }).render().asPng()
