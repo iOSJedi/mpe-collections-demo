@@ -1,6 +1,7 @@
 import { db } from '@/db'
 import { sql, eq } from 'drizzle-orm'
 import * as schema from '@/db/schema'
+import { referenceNumberFor } from './cwt/reference'
 import {
   penaltyConfig, penaltyLedger, paymentAllocations, apWorkflowEvents,
   creditLedger, securityDeposits, depositForfeitures, milestoneTemplates, poMilestones,
@@ -1529,6 +1530,90 @@ export async function seedStage5() {
 
 // ─── Main (backwards compat) ──────────────────────────────────────────────────
 
+// ─── CWT Enrollment (exported so it can be run standalone after other stages) ──
+
+export async function seedCwt() {
+  const allCustomers = await db.select().from(schema.customers)
+  const corpTenants = allCustomers.filter(c => c.type === 'TENANT').slice(0, 11)
+
+  const SIGNATORIES = ['Juan Dela Cruz','Maria Santos','Jose Reyes','Ana Garcia',
+                       'Roberto Tan','Lucia Lim','Eduardo Cruz','Isabella Reyes']
+
+  const enrolledIds: number[] = []
+  for (let i = 0; i < 8; i++) {
+    const c = corpTenants[i]
+    if (!c) break
+    const tin = `${randInt(100, 999)}-${randInt(100, 999)}-${randInt(100, 999)}-000`
+    await db.update(schema.customers).set({
+      tin,
+      branchCode: '000',
+      rdoCode: String(randInt(40, 60)),
+      taxClassification: 'PRIVATE',
+      isTopWithholdingAgent: i === 0,
+      authorizedSignatoryName: SIGNATORIES[i],
+      authorizedSignatoryEmail: `signatory${i + 1}@${c.name.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')}.com.ph`,
+      signatureImageUrl: `/signatures/demo-sig-${i + 1}.png`,
+      withholdingRatePct: '5.00',
+      cwtAtcCode: 'WC100',
+      cwtAutoIssueEnrolledAt: new Date(Date.now() - randInt(30, 180) * 86400000),
+    }).where(eq(schema.customers.customerId, c.customerId))
+    enrolledIds.push(c.customerId)
+  }
+
+  // Mark tenant #8 as the "reserved magic-moment tenant" with a recognizable name suffix.
+  if (corpTenants[7]) {
+    const name = corpTenants[7].name
+    if (!name.includes('(Demo Corp)')) {
+      await db.update(schema.customers).set({ name: name + ' (Demo Corp)' })
+        .where(eq(schema.customers.customerId, corpTenants[7].customerId))
+    }
+  }
+
+  console.log(`Enrolled ${enrolledIds.length} corporate tenants for CWT auto-issuance`)
+
+  // Seed historical CWT certificates for enrolled tenants #0..6 (skip reserved #7)
+  const cwtRows: any[] = []
+  for (const customerId of enrolledIds.slice(0, 7)) {
+    const tenantInvoices = await db.select().from(schema.invoices)
+      .where(eq(schema.invoices.customerId, customerId)).limit(3)
+    for (const inv of tenantInvoices) {
+      const gross = Number(inv.amount)
+      const withheld = Math.round(gross * 5) / 100
+      const payment = (await db.select().from(schema.incomingPayments)
+        .where(eq(schema.incomingPayments.invoiceId, inv.invoiceId)).limit(1))[0]
+      if (!payment) continue
+      const period = new Date(inv.billingPeriodStart)
+      const ref = referenceNumberFor({
+        year: period.getFullYear(), month: period.getMonth() + 1,
+        customerId, invoiceId: inv.invoiceId, paymentId: payment.paymentId,
+      })
+      cwtRows.push({
+        customerId, contractId: inv.contractId, invoiceId: inv.invoiceId, paymentId: payment.paymentId,
+        grossAmount: gross.toFixed(2), withheldAmount: withheld.toFixed(2),
+        ratePct: '5.00', atcCode: 'WC100',
+        periodStart: inv.billingPeriodStart, periodEnd: inv.billingPeriodEnd,
+        referenceNumber: ref,
+        pdfUrl: null,
+        signatureApplied: true, status: 'ISSUED', source: 'AUTO_ENROLLED',
+        signedByName: 'Auto', signedByEmail: 'auto@ayalaland.com',
+        issuedAt: (() => {
+          const d = payment.paymentDate
+          if (!d) return null
+          if (d instanceof Date && !isNaN(d.getTime())) return d
+          // Proxy may return ISO string; Drizzle appends +0000 making it invalid — strip Z suffix
+          const s = String(d).replace(/Z\+0000$/, 'Z').replace(/\+0000$/, '+00:00')
+          const parsed = new Date(s)
+          return isNaN(parsed.getTime()) ? null : parsed
+        })(),
+      })
+    }
+  }
+  if (cwtRows.length > 0) {
+    await chunkedInsert(schema.cwtCertificates, cwtRows)
+  }
+  console.log(`Seeded ${cwtRows.length} historical CWT certificates`)
+}
+
 export async function seedDatabase() {
   console.log('Starting Ayala Land Payments Portal seed...\n')
   await seedStage1()
@@ -1536,5 +1621,7 @@ export async function seedDatabase() {
   await seedStage3()
   await seedStage4()
   await seedStage5()
+  // ─── CWT ENROLLMENT LAYER ────────────────────────────────────────────────
+  await seedCwt()
   console.log('\nSeed complete!')
 }
