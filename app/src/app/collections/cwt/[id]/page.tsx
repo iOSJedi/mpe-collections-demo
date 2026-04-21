@@ -139,7 +139,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 </div>
                 {c.issuedAt && (
                   <div className="text-xs text-slate-500 mt-1">
-                    Issued {typeof c.issuedAt === 'string' ? c.issuedAt.slice(0, 10) : ''}
+                    Issued {String(c.issuedAt).slice(0, 10)}
                   </div>
                 )}
               </div>
