@@ -131,7 +131,7 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
               position: 'absolute', left, top,
               transform: 'translateY(-100%)',
               fontSize: (c.size ?? 10) * displayScale,
-              fontFamily: 'Helvetica, Arial, sans-serif',
+              fontFamily: c.monospace ? '"Courier New", Courier, monospace' : 'Helvetica, Arial, sans-serif',
               fontWeight: c.bold !== false ? 700 : 400,
               color: '#0052cc',
               background: isSel ? 'rgba(0,82,204,0.25)' : 'rgba(0,82,204,0.08)',
@@ -146,12 +146,14 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
               // Each character gets its own cell at exactly charPitch px
               const pxPitch = (c.charPitch ?? 0) * displayScale
               return (
-                <div key={key} onPointerDown={(e) => onPointerDown(e, key)} style={baseStyle}>
+                <div key={key} onPointerDown={(e) => onPointerDown(e, key)}
+                     style={{ ...baseStyle, display: 'flex', alignItems: 'flex-end' }}>
                   {sample.split('').map((ch, i) => (
                     <span key={i} style={{
                       display: 'inline-block',
                       width: pxPitch,
                       textAlign: 'center',
+                      lineHeight: 1,
                     }}>{ch}</span>
                   ))}
                 </div>
@@ -227,14 +229,19 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
                        onChange={e => setField(selected, 'charPitch', Number(e.target.value) || undefined)}
                        className="w-full border rounded px-2 py-1 text-sm font-mono" />
               </label>
-              <label className="text-xs flex items-center gap-2 mt-4 col-span-2">
+              <label className="text-xs flex items-center gap-2 mt-4">
                 <input type="checkbox" checked={sel.bold !== false}
                        onChange={e => setField(selected, 'bold', e.target.checked ? undefined : false)} />
                 <span>Bold</span>
               </label>
+              <label className="text-xs flex items-center gap-2 mt-4">
+                <input type="checkbox" checked={sel.monospace === true}
+                       onChange={e => setField(selected, 'monospace', e.target.checked ? true : undefined)} />
+                <span>Monospace (Courier)</span>
+              </label>
             </div>
             <div className="mt-2 text-[10px] text-slate-500 leading-tight">
-              <strong>Tip:</strong> set char pitch for TIN / date / ATC fields where each character must align to a form box. Arrow keys nudge x/y; use the input here for pitch.
+              <strong>Tip:</strong> for TIN / date / ATC cells, enable <em>Monospace</em> + set <em>char pitch</em> to the cell width. Each char gets centered inside its cell automatically. Arrow keys nudge x/y.
             </div>
           </div>
         )}

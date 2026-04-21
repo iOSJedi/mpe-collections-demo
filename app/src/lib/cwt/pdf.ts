@@ -49,6 +49,8 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
   const page = pdf.getPages()[0]
   const helv = await pdf.embedFont(StandardFonts.Helvetica)
   const helvBold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const courier = await pdf.embedFont(StandardFonts.Courier)
+  const courierBold = await pdf.embedFont(StandardFonts.CourierBold)
 
   const ink = rgb(0.03, 0.08, 0.2)
   const accent = rgb(0.0, 0.28, 0.6)
@@ -58,14 +60,17 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
     const c = coords[key]
     if (!c || c.size === 0) return
     const bold = c.bold !== false
-    const font = bold ? helvBold : helv
+    const mono = c.monospace === true
+    const font = mono ? (bold ? courierBold : courier) : (bold ? helvBold : helv)
     const size = c.size ?? 10
     const yPt = PDF_SIZE.height - c.y
 
     if (c.charPitch && c.charPitch > 0) {
-      // Fixed-pitch: draw each character at (x + i * charPitch, y)
+      // Each character is drawn individually, centered inside its charPitch-wide cell.
       for (let i = 0; i < text.length; i++) {
-        page.drawText(text[i], { x: c.x + i * c.charPitch, y: yPt, font, size, color })
+        const chW = font.widthOfTextAtSize(text[i], size)
+        const xPt = c.x + i * c.charPitch + (c.charPitch - chW) / 2
+        page.drawText(text[i], { x: xPt, y: yPt, font, size, color })
       }
     } else {
       page.drawText(text, { x: c.x, y: yPt, font, size, color })

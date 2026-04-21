@@ -18,32 +18,34 @@ export interface FieldCoord {
   y: number
   size?: number
   bold?: boolean
-  /** Points between character left-edges. When set, each char is drawn individually — used for TIN/date boxes. */
+  /** Points between character left-edges. When set, each char is drawn individually inside a cell of this width. */
   charPitch?: number
+  /** Use Courier (fixed-width) instead of Helvetica. Pairs with charPitch for clean grid alignment. */
+  monospace?: boolean
   label: string
 }
 
 export const DEFAULT_COORDS: Record<string, FieldCoord> = {
-  periodFromMM:    { x: 165, y: 121, size: 10, charPitch: 10, label: 'Period From MM' },
-  periodFromDD:    { x: 200, y: 121, size: 10, charPitch: 10, label: 'Period From DD' },
-  periodFromYYYY:  { x: 230, y: 121, size: 10, charPitch: 10, label: 'Period From YYYY' },
-  periodToMM:      { x: 420, y: 121, size: 10, charPitch: 10, label: 'Period To MM' },
-  periodToDD:      { x: 455, y: 121, size: 10, charPitch: 10, label: 'Period To DD' },
-  periodToYYYY:    { x: 485, y: 121, size: 10, charPitch: 10, label: 'Period To YYYY' },
+  periodFromMM:    { x: 165, y: 121, size: 10, charPitch: 10, monospace: true, label: 'Period From MM' },
+  periodFromDD:    { x: 200, y: 121, size: 10, charPitch: 10, monospace: true, label: 'Period From DD' },
+  periodFromYYYY:  { x: 230, y: 121, size: 10, charPitch: 10, monospace: true, label: 'Period From YYYY' },
+  periodToMM:      { x: 420, y: 121, size: 10, charPitch: 10, monospace: true, label: 'Period To MM' },
+  periodToDD:      { x: 455, y: 121, size: 10, charPitch: 10, monospace: true, label: 'Period To DD' },
+  periodToYYYY:    { x: 485, y: 121, size: 10, charPitch: 10, monospace: true, label: 'Period To YYYY' },
 
-  payeeTin1:       { x: 215, y: 150, size: 11, charPitch: 13, label: 'Payee TIN 1-3' },
-  payeeTin2:       { x: 265, y: 150, size: 11, charPitch: 13, label: 'Payee TIN 4-6' },
-  payeeTin3:       { x: 315, y: 150, size: 11, charPitch: 13, label: 'Payee TIN 7-9' },
-  payeeTin4:       { x: 365, y: 150, size: 11, charPitch: 13, label: 'Payee TIN 10-12' },
+  payeeTin1:       { x: 215, y: 150, size: 11, charPitch: 13, monospace: true, label: 'Payee TIN 1-3' },
+  payeeTin2:       { x: 265, y: 150, size: 11, charPitch: 13, monospace: true, label: 'Payee TIN 4-6' },
+  payeeTin3:       { x: 315, y: 150, size: 11, charPitch: 13, monospace: true, label: 'Payee TIN 7-9' },
+  payeeTin4:       { x: 365, y: 150, size: 11, charPitch: 13, monospace: true, label: 'Payee TIN 10-12' },
 
   payeeName:       { x: 45,  y: 175, size: 11, label: 'Payee Name' },
   payeeAddress:    { x: 45,  y: 203, size: 10, label: 'Payee Address', bold: false },
   payeeZip:        { x: 555, y: 203, size: 10, label: 'Payee ZIP' },
 
-  payorTin1:       { x: 215, y: 267, size: 11, charPitch: 13, label: 'Payor TIN 1-3' },
-  payorTin2:       { x: 265, y: 267, size: 11, charPitch: 13, label: 'Payor TIN 4-6' },
-  payorTin3:       { x: 315, y: 267, size: 11, charPitch: 13, label: 'Payor TIN 7-9' },
-  payorTin4:       { x: 365, y: 267, size: 11, charPitch: 13, label: 'Payor TIN 10-12' },
+  payorTin1:       { x: 215, y: 267, size: 11, charPitch: 13, monospace: true, label: 'Payor TIN 1-3' },
+  payorTin2:       { x: 265, y: 267, size: 11, charPitch: 13, monospace: true, label: 'Payor TIN 4-6' },
+  payorTin3:       { x: 315, y: 267, size: 11, charPitch: 13, monospace: true, label: 'Payor TIN 7-9' },
+  payorTin4:       { x: 365, y: 267, size: 11, charPitch: 13, monospace: true, label: 'Payor TIN 10-12' },
 
   payorName:       { x: 45,  y: 289, size: 11, label: 'Payor Name' },
   payorAddress:    { x: 45,  y: 317, size: 10, label: 'Payor Address', bold: false },
