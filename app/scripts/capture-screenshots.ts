@@ -54,12 +54,11 @@ async function main() {
       await sleep(3000)  // give the iframe PDF a beat to render
       await page.screenshot({ path: path.join(OUT, 'magic-pdf.png') })
     }
-    if (sim.invoiceId) {
-      await page.goto(`${DEV_URL}/receivable/${sim.invoiceId}`)
-      await page.waitForLoadState('networkidle')
-      await sleep(500)
-      await page.screenshot({ path: path.join(OUT, 'magic-after.png') })
-    }
+    // magic-after shows the queue post-simulate — the new ISSUED row at top.
+    await page.goto(`${DEV_URL}/collections/cwt`)
+    await page.waitForLoadState('networkidle')
+    await sleep(500)
+    await page.screenshot({ path: path.join(OUT, 'magic-after.png') })
 
     // 4. Escalations page (may or may not have CWT_GAP_MISMATCH rows — best-effort)
     await page.goto(`${DEV_URL}/collections/escalations`)
