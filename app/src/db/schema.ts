@@ -19,6 +19,18 @@ export const customers = pgTable('customers_col', {
   status: varchar('status', { length: 20 }).notNull().default('ACTIVE'),
   creditBalance: decimal('credit_balance', { precision: 12, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at').defaultNow(),
+  tin: varchar('tin', { length: 15 }),
+  branchCode: varchar('branch_code', { length: 5 }),
+  rdoCode: varchar('rdo_code', { length: 3 }),
+  taxClassification: varchar('tax_classification', { length: 20 }),
+  isTopWithholdingAgent: boolean('is_top_withholding_agent').default(false),
+  authorizedSignatoryName: varchar('authorized_signatory_name', { length: 200 }),
+  authorizedSignatoryEmail: varchar('authorized_signatory_email', { length: 200 }),
+  signatureImageUrl: text('signature_image_url'),
+  withholdingRatePct: decimal('withholding_rate_pct', { precision: 5, scale: 2 }).default('5.00'),
+  cwtAtcCode: varchar('cwt_atc_code', { length: 10 }).default('WC100'),
+  cwtAutoIssueEnrolledAt: timestamp('cwt_auto_issue_enrolled_at'),
+  cwtAuthorizationDocumentId: integer('cwt_authorization_document_id'),
 })
 
 export const contracts = pgTable('contracts_col', {
@@ -71,6 +83,8 @@ export const incomingPayments = pgTable('incoming_payments_col', {
   clearanceDate: date('clearance_date'),
   status: varchar('status', { length: 20 }).notNull().default('PENDING'),
   confirmedAt: timestamp('confirmed_at'),
+  cwtAmount: decimal('cwt_amount', { precision: 12, scale: 2 }),
+  cwtCertificateId: integer('cwt_certificate_id'),
 }, (table) => [
   index('idx_payments_invoice_col').on(table.invoiceId),
   index('idx_payments_customer_col').on(table.customerId),
@@ -120,6 +134,34 @@ export const escalations = pgTable('escalations_col', {
 }, (table) => [
   index('idx_escalations_status_col').on(table.status),
   index('idx_escalations_customer_col').on(table.customerId),
+])
+
+export const cwtCertificates = pgTable('cwt_certificates_col', {
+  certificateId: serial('certificate_id').primaryKey(),
+  customerId: integer('customer_id').notNull().references(() => customers.customerId),
+  contractId: integer('contract_id').references(() => contracts.contractId),
+  invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId),
+  paymentId: integer('payment_id').references(() => incomingPayments.paymentId),
+  grossAmount: decimal('gross_amount', { precision: 12, scale: 2 }).notNull(),
+  withheldAmount: decimal('withheld_amount', { precision: 12, scale: 2 }).notNull(),
+  ratePct: decimal('rate_pct', { precision: 5, scale: 2 }).notNull(),
+  atcCode: varchar('atc_code', { length: 10 }).notNull(),
+  periodStart: date('period_start').notNull(),
+  periodEnd: date('period_end').notNull(),
+  referenceNumber: varchar('reference_number', { length: 15 }).notNull().unique(),
+  pdfUrl: text('pdf_url'),
+  signatureApplied: boolean('signature_applied').default(false),
+  status: varchar('status', { length: 20 }).notNull().default('DRAFT'),
+  source: varchar('source', { length: 20 }).notNull().default('AUTO_ENROLLED'),
+  signedByName: varchar('signed_by_name', { length: 200 }),
+  signedByEmail: varchar('signed_by_email', { length: 200 }),
+  issuedAt: timestamp('issued_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_cwt_customer_col').on(table.customerId),
+  index('idx_cwt_invoice_col').on(table.invoiceId),
+  index('idx_cwt_status_col').on(table.status),
+  index('idx_cwt_issued_at_col').on(table.issuedAt),
 ])
 
 // ─── ACCOUNTS PAYABLE ─────────────────────────────────────────
