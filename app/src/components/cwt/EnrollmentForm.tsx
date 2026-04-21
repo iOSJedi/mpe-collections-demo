@@ -67,7 +67,7 @@ export function EnrollmentForm({ customerId, qrToken }: { customerId: number; qr
         <h2 className="text-xl font-semibold">Proof of TIN</h2>
         <p className="text-sm text-slate-500 mb-2">Upload BIR Form 2303 or a sample OR (PDF/PNG/JPEG, ≤ 5 MB).</p>
         <input type="file" accept="application/pdf,image/png,image/jpeg"
-          onChange={async e => { const f = e.target.files?.[0]; if (f) setState(s => ({ ...s, tinProofDataUrl: await readFile(f) })) }} />
+          onChange={async e => { const f = e.target.files?.[0]; if (!f) return; const url = await readFile(f); setState(s => ({ ...s, tinProofDataUrl: url })) }} />
       </section>
 
       <section>
