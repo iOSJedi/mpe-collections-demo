@@ -6,15 +6,14 @@ import { TenantInboxPreview } from '@/components/cwt/TenantInboxPreview'
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const rows = await db.select({ c: cwtCertificates, cust: customers })
-    .from(cwtCertificates)
-    .leftJoin(customers, eq(customers.customerId, cwtCertificates.customerId))
-    .where(eq(cwtCertificates.certificateId, Number(id)))
-    .limit(1)
-  const row = rows[0]
-  if (!row) return <div className="p-8">Not found</div>
-  const c = row.c
-  const tenantEmail = row.cust?.authorizedSignatoryEmail ?? 'tenant@example.com'
+  const [c] = await db.select().from(cwtCertificates)
+    .where(eq(cwtCertificates.certificateId, Number(id))).limit(1)
+  if (!c) return <div className="p-8">Not found</div>
+
+  const [cust] = await db.select({ authorizedSignatoryEmail: customers.authorizedSignatoryEmail })
+    .from(customers).where(eq(customers.customerId, c.customerId)).limit(1)
+  const tenantEmail = cust?.authorizedSignatoryEmail ?? 'tenant@example.com'
+
   return (
     <div className="p-8 space-y-4">
       <div className="flex items-end justify-between gap-4">
