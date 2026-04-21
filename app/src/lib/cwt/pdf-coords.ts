@@ -22,6 +22,8 @@ export interface FieldCoord {
   charPitch?: number
   /** Use Courier (fixed-width) instead of Helvetica. Pairs with charPitch for clean grid alignment. */
   monospace?: boolean
+  /** Horizontal alignment relative to (x, y). 'left' is default — x is the left edge. 'right' — x is the right edge. 'center' — x is the midpoint. */
+  align?: 'left' | 'center' | 'right'
   label: string
 }
 
@@ -53,12 +55,12 @@ export const DEFAULT_COORDS: Record<string, FieldCoord> = {
 
   rowLabel:        { x: 30,  y: 383, size: 9,  label: 'Row 1 — Nature', bold: false },
   rowAtc:          { x: 195, y: 383, size: 10, label: 'Row 1 — ATC' },
-  rowGross:        { x: 373, y: 383, size: 10, label: 'Row 1 — Amount (3rd month)' },
-  rowTotal:        { x: 456, y: 383, size: 10, label: 'Row 1 — Total' },
-  rowTaxWithheld:  { x: 517, y: 383, size: 10, label: 'Row 1 — Tax Withheld' },
+  rowGross:        { x: 445, y: 383, size: 10, align: 'right', label: 'Row 1 — Amount (3rd month)' },
+  rowTotal:        { x: 525, y: 383, size: 10, align: 'right', label: 'Row 1 — Total' },
+  rowTaxWithheld:  { x: 585, y: 383, size: 10, align: 'right', label: 'Row 1 — Tax Withheld' },
 
-  totalsGross:     { x: 456, y: 506, size: 10, label: 'Totals — Gross' },
-  totalsTax:       { x: 517, y: 506, size: 10, label: 'Totals — Tax' },
+  totalsGross:     { x: 525, y: 506, size: 10, align: 'right', label: 'Totals — Gross' },
+  totalsTax:       { x: 585, y: 506, size: 10, align: 'right', label: 'Totals — Tax' },
 
   signatureImg:    { x: 75,  y: 710, size: 0,  label: 'Signature (image, 140×40pt)' },
   signatoryName:   { x: 80,  y: 758, size: 9,  label: 'Signatory Name' },

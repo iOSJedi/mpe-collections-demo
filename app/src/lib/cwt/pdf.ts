@@ -64,16 +64,25 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
     const font = mono ? (bold ? courierBold : courier) : (bold ? helvBold : helv)
     const size = c.size ?? 10
     const yPt = PDF_SIZE.height - c.y
+    const align = c.align ?? 'left'
 
     if (c.charPitch && c.charPitch > 0) {
-      // Each character is drawn individually, centered inside its charPitch-wide cell.
+      // Each character drawn individually, centered in its charPitch-wide cell.
+      const totalWidth = c.charPitch * text.length
+      const originX = align === 'right' ? c.x - totalWidth
+                    : align === 'center' ? c.x - totalWidth / 2
+                    : c.x
       for (let i = 0; i < text.length; i++) {
         const chW = font.widthOfTextAtSize(text[i], size)
-        const xPt = c.x + i * c.charPitch + (c.charPitch - chW) / 2
+        const xPt = originX + i * c.charPitch + (c.charPitch - chW) / 2
         page.drawText(text[i], { x: xPt, y: yPt, font, size, color })
       }
     } else {
-      page.drawText(text, { x: c.x, y: yPt, font, size, color })
+      const textW = font.widthOfTextAtSize(text, size)
+      const xPt = align === 'right' ? c.x - textW
+                : align === 'center' ? c.x - textW / 2
+                : c.x
+      page.drawText(text, { x: xPt, y: yPt, font, size, color })
     }
   }
 

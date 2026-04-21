@@ -71,7 +71,7 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
   const nudge = (key: string, dx: number, dy: number) => {
     setCoords(prev => ({ ...prev, [key]: { ...prev[key], x: round(prev[key].x + dx), y: round(prev[key].y + dy) } }))
   }
-  const setField = (key: string, field: keyof FieldCoord, value: number | boolean | undefined) => {
+  const setField = (key: string, field: keyof FieldCoord, value: number | boolean | string | undefined) => {
     setCoords(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }))
   }
 
@@ -127,9 +127,11 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
             const sample = SAMPLES[key] ?? c.label
             const pitched = (c.charPitch ?? 0) > 0
 
+            const align = c.align ?? 'left'
+            const alignShift = align === 'right' ? '-100%' : align === 'center' ? '-50%' : '0'
             const baseStyle: React.CSSProperties = {
               position: 'absolute', left, top,
-              transform: 'translateY(-100%)',
+              transform: `translateY(-100%) translateX(${alignShift})`,
               fontSize: (c.size ?? 10) * displayScale,
               fontFamily: c.monospace ? '"Courier New", Courier, monospace' : 'Helvetica, Arial, sans-serif',
               fontWeight: c.bold !== false ? 700 : 400,
@@ -239,6 +241,18 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
                        onChange={e => setField(selected, 'monospace', e.target.checked ? true : undefined)} />
                 <span>Monospace (Courier)</span>
               </label>
+              <div className="text-xs col-span-2">
+                <div className="text-slate-500 mb-1">Align (anchor at x)</div>
+                <div className="flex gap-1">
+                  {(['left','center','right'] as const).map(a => (
+                    <button key={a} type="button"
+                            onClick={() => setField(selected, 'align', a === 'left' ? undefined : a)}
+                            className={`flex-1 text-xs px-2 py-1 rounded border ${(sel.align ?? 'left') === a ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}`}>
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="mt-2 text-[10px] text-slate-500 leading-tight">
               <strong>Tip:</strong> for TIN / date / ATC cells, enable <em>Monospace</em> + set <em>char pitch</em> to the cell width. Each char gets centered inside its cell automatically. Arrow keys nudge x/y.
