@@ -6,6 +6,7 @@ import { stripe } from '@/lib/stripe'
 import { calculateAllocation } from '@/lib/payment-allocation'
 import { addBusinessDays } from '@/lib/utils'
 import { invalidateCache } from '@/lib/cache'
+import { tryAutoIssueForPayment } from '@/lib/cwt/issue'
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
         clearanceDate: clearanceDate.toISOString().split('T')[0],
         status: 'PENDING_CLEARANCE',
       }).returning()
+      try { await tryAutoIssueForPayment(payment.paymentId) } catch { /* auto-issue failure must not block payment */ }
       invalidateCache('customer-')
       invalidateCache('payments-list')
       return NextResponse.json({
@@ -112,6 +114,7 @@ export async function POST(request: NextRequest) {
       status: 'CONFIRMED',
       confirmedAt: new Date(),
     }).returning()
+    try { await tryAutoIssueForPayment(payment.paymentId) } catch { /* auto-issue failure must not block payment */ }
 
     // Write allocation rows
     for (const a of allocation.applied) {

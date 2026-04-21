@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/generate-cwt", "schedule": "0 1 * * *" }
+  ]
+}
