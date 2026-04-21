@@ -10,20 +10,36 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     .where(eq(cwtCertificates.certificateId, Number(id))).limit(1)
   if (!c) return <div className="p-8">Not found</div>
 
-  const [cust] = await db.select({ authorizedSignatoryEmail: customers.authorizedSignatoryEmail })
-    .from(customers).where(eq(customers.customerId, c.customerId)).limit(1)
+  const [cust] = await db.select().from(customers)
+    .where(eq(customers.customerId, c.customerId)).limit(1)
   const tenantEmail = cust?.authorizedSignatoryEmail ?? 'tenant@example.com'
 
   return (
-    <div className="p-8 space-y-4">
-      <div className="flex items-end justify-between gap-4">
+    <div className="p-8 space-y-4 bg-slate-50 min-h-screen">
+      <div className="flex items-end justify-between gap-4 max-w-3xl mx-auto">
         <div>
           <div className="text-sm text-slate-500">Reference</div>
           <div className="text-2xl font-mono">{c.referenceNumber}</div>
         </div>
         <TenantInboxPreview tenantEmail={tenantEmail} referenceNumber={c.referenceNumber} />
       </div>
-      <Bir2307Preview pdfDataUrl={c.pdfUrl ?? ''} />
+      <Bir2307Preview
+        data={{
+          referenceNumber: c.referenceNumber,
+          periodStart: c.periodStart,
+          periodEnd: c.periodEnd,
+          payeeName: 'Ayala Land, Inc.',
+          payeeTin: '000-000-000-000',
+          payorName: cust?.name?.replace(' (Demo Corp)', '') ?? 'Tenant',
+          payorTin: cust?.tin ?? '—',
+          atcCode: c.atcCode,
+          grossAmount: c.grossAmount,
+          withheldAmount: c.withheldAmount,
+          signedByName: c.signedByName,
+          signatureImageUrl: cust?.signatureImageUrl,
+        }}
+        pdfDataUrl={c.pdfUrl ?? undefined}
+      />
     </div>
   )
 }
