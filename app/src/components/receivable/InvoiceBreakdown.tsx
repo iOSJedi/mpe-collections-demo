@@ -73,6 +73,15 @@ function InvoiceCard({ inv }: { inv: InvoiceBreakdownItem }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-400">Due {inv.dueDate}</span>
           <AgingBadge daysOverdue={inv.daysOverdue} />
+          {inv.cwtCert && (
+            <a
+              href={`/collections/cwt/${inv.cwtCert.certificateId}`}
+              className="inline-flex items-center gap-1 px-3 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200 hover:bg-blue-100 transition-colors"
+            >
+              BIR 2307 · {inv.cwtCert.referenceNumber}
+              <span className="text-blue-400">→</span>
+            </a>
+          )}
         </div>
       </div>
 

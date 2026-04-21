@@ -44,6 +44,19 @@ export async function GET(
       penaltyRows = penResult as unknown as typeof penaltyRows
     }
 
+    // CWT certificates linked to each invoice (first one wins)
+    let cwtRows: { certificate_id: number; invoice_id: number; reference_number: string }[] = []
+    if (invoiceIds.length > 0) {
+      const cwtResult = await db.execute(sql.raw(`SELECT certificate_id, invoice_id, reference_number FROM cwt_certificates_col WHERE invoice_id IN (${invoiceIds.join(',')}) ORDER BY certificate_id`))
+      cwtRows = cwtResult as unknown as typeof cwtRows
+    }
+    const cwtByInvoice = new Map<number, { certificateId: number; referenceNumber: string }>()
+    for (const row of cwtRows) {
+      if (!cwtByInvoice.has(row.invoice_id)) {
+        cwtByInvoice.set(row.invoice_id, { certificateId: row.certificate_id, referenceNumber: row.reference_number })
+      }
+    }
+
     const penaltiesByInvoice = new Map<number, typeof penaltyRows>()
     for (const p of penaltyRows) {
       const arr = penaltiesByInvoice.get(p.invoice_id) || []
@@ -98,6 +111,7 @@ export async function GET(
         penaltiesPaid: Number(inv.penalties_paid),
         penalties: pens,
         daysOverdue,
+        cwtCert: cwtByInvoice.get(inv.invoice_id) ?? null,
       }
     })
 

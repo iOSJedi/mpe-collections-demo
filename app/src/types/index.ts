@@ -320,6 +320,7 @@ export interface InvoiceBreakdownItem {
   penaltiesPaid: number
   penalties: PenaltyLedgerEntry[]
   daysOverdue: number
+  cwtCert: { certificateId: number; referenceNumber: string } | null
 }
 
 export interface PaymentWithAllocations {
