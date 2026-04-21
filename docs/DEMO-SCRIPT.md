@@ -255,3 +255,19 @@ Recap the key differentiators:
 | EEI Corporation | (Supplier) | PO-ALI-000008: milestones at 20% paid, 40% completed, 40% pending |
 | Siemens Philippines Inc. | (Supplier) | PO-ALI-000031: milestones to demo Mark Complete |
 | Monark Equipment Corp. | (Supplier) | SINV-000015: GR_CONFIRMED workflow stage |
+
+## CWT auto-issuance (Phase 2 pitch)
+
+Before the meeting:
+1. Run `curl -X POST $BASE_URL/api/seed` against the demo DB
+2. Run `curl -X POST $BASE_URL/api/demo/reset-cwt-demo`
+3. Open `/collections/cwt` in the browser — the queue should show 18 seeded certificates
+4. Open the emulator panel (payer view), keep the "Simulate corporate rent payment" button visible
+
+During the meeting, after slide 7 lands:
+1. Click the simulate button
+2. Narrate the toasts as they appear (bank transfer → gap → 2307 rendered → invoice closed)
+3. Click the new row in the queue to open the PDF preview
+4. Click "Tenant inbox preview" to show the mock Gmail email was delivered
+
+If something fails: slide 7 of the deck has static screenshots of the exact flow, and the deck stands alone.
