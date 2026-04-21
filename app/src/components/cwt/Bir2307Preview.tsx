@@ -16,7 +16,8 @@ export interface Bir2307Data {
 }
 
 function mmddyyyy(iso: string): string {
-  const [y, m, d] = iso.split('-')
+  const date = iso.slice(0, 10)
+  const [y, m, d] = date.split('-')
   return `${m}/${d}/${y}`
 }
 
