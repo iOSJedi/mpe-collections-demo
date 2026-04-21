@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated screenshots (consumed by deck build, not committed)
+decks-tmp-screenshots/
