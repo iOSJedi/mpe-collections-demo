@@ -1,16 +1,21 @@
 // Coordinates for overlaying data onto app/public/forms/BIR-2307-real.pdf.
-// Values are in PDF points using TOP-LEFT origin (same as pymupdf extraction).
-// pdf-lib draws from bottom-left, so at render time: y_lib = 936 - y.
-// Tune these in the visual editor at /tools/bir-overlay.
+// Values are PDF points with TOP-LEFT origin (matches pymupdf extraction).
+// pdf-lib draws from bottom-left, so render-time: y_lib = 936 - y.
+//
+// Source of truth is the `cwt_config_col` DB row with key = 'pdf_coords'.
+// These DEFAULTS are used as the initial seed + fallback when the DB is empty.
+// The visual editor at /tools/bir-overlay writes back to the DB.
+
+import { db } from '@/db'
+import { sql } from 'drizzle-orm'
 
 export const PDF_SIZE = { width: 612, height: 936 }
-export const BG_PNG = '/forms/BIR-2307-bg.png'  // rendered at 2.5× (1530×2340)
+export const BG_PNG = '/forms/BIR-2307-bg.png'
 export const BG_SCALE = 2.5
 
-// Each field: { x, y } in PDF points (top-left). Size/bold are hints for rendering.
 export interface FieldCoord { x: number; y: number; size?: number; bold?: boolean; label: string }
 
-export const COORDS: Record<string, FieldCoord> = {
+export const DEFAULT_COORDS: Record<string, FieldCoord> = {
   periodFromMM:    { x: 165, y: 121, size: 10, label: 'Period From MM' },
   periodFromDD:    { x: 200, y: 121, size: 10, label: 'Period From DD' },
   periodFromYYYY:  { x: 230, y: 121, size: 10, label: 'Period From YYYY' },
@@ -52,4 +57,27 @@ export const COORDS: Record<string, FieldCoord> = {
   stamp:           { x: 30,  y: 910, size: 7,  label: 'Auto-issue stamp', bold: false },
 }
 
-export type CoordKey = keyof typeof COORDS
+export type CoordMap = Record<string, FieldCoord>
+export type CoordKey = keyof typeof DEFAULT_COORDS
+
+export async function loadCoords(): Promise<CoordMap> {
+  try {
+    const rows = await db.execute(
+      sql`SELECT value_json FROM cwt_config_col WHERE config_key = 'pdf_coords' LIMIT 1`
+    )
+    const list = rows as unknown as Array<{ value_json: CoordMap | string }>
+    if (list.length && list[0].value_json) {
+      const raw = list[0].value_json
+      return (typeof raw === 'string' ? JSON.parse(raw) : raw) as CoordMap
+    }
+  } catch { /* fall through to defaults */ }
+  return DEFAULT_COORDS
+}
+
+export async function saveCoords(coords: CoordMap): Promise<void> {
+  await db.execute(
+    sql`INSERT INTO cwt_config_col (config_key, value_json, updated_at)
+        VALUES ('pdf_coords', ${JSON.stringify(coords)}::jsonb, NOW())
+        ON CONFLICT (config_key) DO UPDATE SET value_json = EXCLUDED.value_json, updated_at = NOW()`
+  )
+}

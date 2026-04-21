@@ -84,7 +84,7 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
       })
       const out = await res.json()
       if (!res.ok) throw new Error(out.error ?? 'save failed')
-      setToast('Saved to pdf-coords.ts. Refresh to see PDF preview update.')
+      setToast(`Saved ${out.fields} fields to DB. Preview now reflects these coords.`)
     } catch (e: any) {
       setToast('Error: ' + e.message)
     } finally {
@@ -169,10 +169,10 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
           </button>
           <button onClick={save} disabled={saving}
                   className="w-full bg-blue-600 text-white text-sm rounded px-3 py-2 hover:bg-blue-700 disabled:bg-slate-300">
-            {saving ? 'Saving…' : 'Save coords → pdf-coords.ts'}
+            {saving ? 'Saving…' : 'Save coords → database'}
           </button>
           <button onClick={reset} className="w-full bg-slate-100 text-slate-700 text-sm rounded px-3 py-2 hover:bg-slate-200">
-            Reset to file defaults
+            Reset to last saved
           </button>
         </div>
 

@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { COORDS, PDF_SIZE } from './pdf-coords'
+import { loadCoords, PDF_SIZE, type CoordMap } from './pdf-coords'
 
 export interface Bir2307Data {
   periodStart: string
@@ -43,6 +43,7 @@ function spaced(s: string): string {
 }
 
 export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
+  const coords: CoordMap = await loadCoords()
   const templateBytes = await readFile(TEMPLATE_PATH)
   const pdf = await PDFDocument.load(templateBytes)
   const page = pdf.getPages()[0]
@@ -53,8 +54,8 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
   const accent = rgb(0.0, 0.28, 0.6)
   const muted = rgb(0.3, 0.3, 0.3)
 
-  const drawAt = (key: keyof typeof COORDS, text: string, color = ink) => {
-    const c = COORDS[key]
+  const drawAt = (key: string, text: string, color = ink) => {
+    const c = coords[key]
     if (!c || c.size === 0) return
     const bold = c.bold !== false
     page.drawText(text, {
@@ -104,7 +105,7 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
   if (data.signatureImagePngBase64) {
     try {
       const sig = await pdf.embedPng(Buffer.from(data.signatureImagePngBase64, 'base64'))
-      const c = COORDS.signatureImg
+      const c = coords.signatureImg
       page.drawImage(sig, { x: c.x, y: PDF_SIZE.height - c.y - 40, width: 140, height: 40 })
     } catch { /* skip */ }
   }

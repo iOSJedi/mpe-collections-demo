@@ -1,6 +1,9 @@
-import { COORDS } from '@/lib/cwt/pdf-coords'
+import { loadCoords } from '@/lib/cwt/pdf-coords'
 import { OverlayEditor } from './OverlayEditor'
 
-export default function Page() {
-  return <OverlayEditor initialCoords={COORDS} />
+export const dynamic = 'force-dynamic'
+
+export default async function Page() {
+  const coords = await loadCoords()
+  return <OverlayEditor initialCoords={coords} />
 }
