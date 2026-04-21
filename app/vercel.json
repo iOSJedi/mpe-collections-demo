@@ -1,8 +1,6 @@
 {
   "crons": [
-    {
-      "path": "/api/cron/refresh-insights",
-      "schedule": "0 22 * * *"
-    }
+    { "path": "/api/cron/refresh-insights", "schedule": "0 22 * * *" },
+    { "path": "/api/cron/generate-cwt", "schedule": "0 1 * * *" }
   ]
 }
