@@ -34,6 +34,7 @@ const SAMPLES: Record<string, string> = {
 
 export function OverlayEditor({ initialCoords }: { initialCoords: Record<string, FieldCoord> }) {
   const [coords, setCoords] = useState<Record<string, FieldCoord>>(initialCoords)
+  const [savedCoords, setSavedCoords] = useState<Record<string, FieldCoord>>(initialCoords)
   const [dragging, setDragging] = useState<{ key: string; dx: number; dy: number } | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)       // CSS scale applied to the image + overlay
@@ -84,6 +85,7 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
       })
       const out = await res.json()
       if (!res.ok) throw new Error(out.error ?? 'save failed')
+      setSavedCoords(coords)
       setToast(`Saved ${out.fields} fields to DB. Preview now reflects these coords.`)
     } catch (e: any) {
       setToast('Error: ' + e.message)
@@ -93,7 +95,7 @@ export function OverlayEditor({ initialCoords }: { initialCoords: Record<string,
     }
   }
 
-  const reset = () => setCoords(initialCoords)
+  const reset = () => setCoords(savedCoords)
   const openPreview = () => window.open('/api/tools/preview-2307', '_blank')
 
   useEffect(() => {
