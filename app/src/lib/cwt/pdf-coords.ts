@@ -53,11 +53,36 @@ export const DEFAULT_COORDS: Record<string, FieldCoord> = {
   payorAddress:    { x: 45,  y: 317, size: 10, label: 'Payor Address', bold: false },
   payorZip:        { x: 555, y: 317, size: 10, label: 'Payor ZIP' },
 
-  rowLabel:        { x: 30,  y: 383, size: 9,  label: 'Row 1 — Nature', bold: false },
-  rowAtc:          { x: 195, y: 383, size: 10, label: 'Row 1 — ATC' },
-  rowGross:        { x: 445, y: 383, size: 10, align: 'right', label: 'Row 1 — Amount (3rd month)' },
-  rowTotal:        { x: 525, y: 383, size: 10, align: 'right', label: 'Row 1 — Total' },
-  rowTaxWithheld:  { x: 585, y: 383, size: 10, align: 'right', label: 'Row 1 — Tax Withheld' },
+  // Part III rows. The BIR 2307 has 5 rows in this section; rows step down by ~15pt.
+  row1Label:       { x: 30,  y: 383, size: 9,  label: 'Row 1 — Nature',      bold: false },
+  row1Atc:         { x: 195, y: 383, size: 10, label: 'Row 1 — ATC' },
+  row1Gross:       { x: 445, y: 383, size: 10, align: 'right', label: 'Row 1 — Amount (3rd month)' },
+  row1Total:       { x: 525, y: 383, size: 10, align: 'right', label: 'Row 1 — Total' },
+  row1TaxWithheld: { x: 585, y: 383, size: 10, align: 'right', label: 'Row 1 — Tax Withheld' },
+
+  row2Label:       { x: 30,  y: 398, size: 9,  label: 'Row 2 — Nature',      bold: false },
+  row2Atc:         { x: 195, y: 398, size: 10, label: 'Row 2 — ATC' },
+  row2Gross:       { x: 445, y: 398, size: 10, align: 'right', label: 'Row 2 — Amount (3rd month)' },
+  row2Total:       { x: 525, y: 398, size: 10, align: 'right', label: 'Row 2 — Total' },
+  row2TaxWithheld: { x: 585, y: 398, size: 10, align: 'right', label: 'Row 2 — Tax Withheld' },
+
+  row3Label:       { x: 30,  y: 413, size: 9,  label: 'Row 3 — Nature',      bold: false },
+  row3Atc:         { x: 195, y: 413, size: 10, label: 'Row 3 — ATC' },
+  row3Gross:       { x: 445, y: 413, size: 10, align: 'right', label: 'Row 3 — Amount (3rd month)' },
+  row3Total:       { x: 525, y: 413, size: 10, align: 'right', label: 'Row 3 — Total' },
+  row3TaxWithheld: { x: 585, y: 413, size: 10, align: 'right', label: 'Row 3 — Tax Withheld' },
+
+  row4Label:       { x: 30,  y: 428, size: 9,  label: 'Row 4 — Nature',      bold: false },
+  row4Atc:         { x: 195, y: 428, size: 10, label: 'Row 4 — ATC' },
+  row4Gross:       { x: 445, y: 428, size: 10, align: 'right', label: 'Row 4 — Amount (3rd month)' },
+  row4Total:       { x: 525, y: 428, size: 10, align: 'right', label: 'Row 4 — Total' },
+  row4TaxWithheld: { x: 585, y: 428, size: 10, align: 'right', label: 'Row 4 — Tax Withheld' },
+
+  row5Label:       { x: 30,  y: 443, size: 9,  label: 'Row 5 — Nature',      bold: false },
+  row5Atc:         { x: 195, y: 443, size: 10, label: 'Row 5 — ATC' },
+  row5Gross:       { x: 445, y: 443, size: 10, align: 'right', label: 'Row 5 — Amount (3rd month)' },
+  row5Total:       { x: 525, y: 443, size: 10, align: 'right', label: 'Row 5 — Total' },
+  row5TaxWithheld: { x: 585, y: 443, size: 10, align: 'right', label: 'Row 5 — Tax Withheld' },
 
   totalsGross:     { x: 525, y: 506, size: 10, align: 'right', label: 'Totals — Gross' },
   totalsTax:       { x: 585, y: 506, size: 10, align: 'right', label: 'Totals — Tax' },

@@ -164,6 +164,34 @@ export const cwtCertificates = pgTable('cwt_certificates_col', {
   index('idx_cwt_issued_at_col').on(table.issuedAt),
 ])
 
+export const cwtCertificateLines = pgTable('cwt_certificate_lines_col', {
+  lineId: serial('line_id').primaryKey(),
+  certificateId: integer('certificate_id').notNull().references(() => cwtCertificates.certificateId, { onDelete: 'cascade' }),
+  lineIndex: integer('line_index').notNull(),
+  description: varchar('description', { length: 200 }).notNull(),
+  atcCode: varchar('atc_code', { length: 10 }).notNull(),
+  ratePct: decimal('rate_pct', { precision: 5, scale: 2 }).notNull(),
+  grossAmount: decimal('gross_amount', { precision: 12, scale: 2 }).notNull(),
+  withheldAmount: decimal('withheld_amount', { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  unique('uq_cwt_lines_cert_idx').on(table.certificateId, table.lineIndex),
+  index('idx_cwt_lines_cert').on(table.certificateId),
+])
+
+export const invoiceLineItems = pgTable('invoice_line_items_col', {
+  lineId: serial('line_id').primaryKey(),
+  invoiceId: integer('invoice_id').notNull().references(() => invoices.invoiceId, { onDelete: 'cascade' }),
+  lineIndex: integer('line_index').notNull(),
+  description: varchar('description', { length: 200 }).notNull(),
+  atcCode: varchar('atc_code', { length: 10 }),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  unique('uq_invoice_lines_inv_idx').on(table.invoiceId, table.lineIndex),
+  index('idx_invoice_lines_inv').on(table.invoiceId),
+])
+
 // ─── ACCOUNTS PAYABLE ─────────────────────────────────────────
 
 export const suppliers = pgTable('suppliers_col', {

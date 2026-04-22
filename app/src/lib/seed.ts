@@ -1609,9 +1609,24 @@ export async function seedCwt() {
     }
   }
   if (cwtRows.length > 0) {
-    await chunkedInsert(schema.cwtCertificates, cwtRows)
+    const inserted = await chunkedInsertReturning(schema.cwtCertificates, cwtRows)
+    // Each seeded cert gets a single line — the historical real-property rent line.
+    const lineRows = inserted.map((c: any) => ({
+      certificateId: c.certificateId,
+      lineIndex: 1,
+      description: 'Rentals of Real Property',
+      atcCode: c.atcCode,
+      ratePct: c.ratePct,
+      grossAmount: c.grossAmount,
+      withheldAmount: c.withheldAmount,
+    }))
+    if (lineRows.length > 0) {
+      await chunkedInsert(schema.cwtCertificateLines, lineRows)
+    }
+    console.log(`Seeded ${cwtRows.length} historical CWT certificates (${lineRows.length} lines)`)
+  } else {
+    console.log('Seeded 0 historical CWT certificates')
   }
-  console.log(`Seeded ${cwtRows.length} historical CWT certificates`)
 }
 
 export async function seedDatabase() {

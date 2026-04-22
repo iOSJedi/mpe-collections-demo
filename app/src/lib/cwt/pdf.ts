@@ -1,7 +1,14 @@
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { loadCoords, PDF_SIZE, type CoordMap } from './pdf-coords'
+
+export interface Bir2307Line {
+  description: string
+  atcCode: string
+  grossAmount: number
+  taxWithheldAmount: number
+}
 
 export interface Bir2307Data {
   periodStart: string
@@ -16,9 +23,8 @@ export interface Bir2307Data {
   payorName: string
   payorAddress: string
   payorZipCode: string
-  atcCode: string
-  grossAmount: number
-  taxWithheldAmount: number
+  /** One entry per Part III row (max 5 on BIR form). */
+  lines: Bir2307Line[]
   signedByName: string
   signedByTin: string
   signatureImagePngBase64?: string
@@ -26,6 +32,7 @@ export interface Bir2307Data {
 }
 
 const TEMPLATE_PATH = path.resolve(process.cwd(), 'public/forms/BIR-2307-real.pdf')
+const MAX_ROWS = 5
 
 function mmddyyyy(iso: string): string {
   const [y, m, d] = iso.slice(0, 10).split('-')
@@ -37,9 +44,6 @@ function splitTin(tin: string): [string, string, string, string] {
 }
 function formatAmount(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-function spaced(s: string): string {
-  return s.split('').join(' ')
 }
 
 export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
@@ -67,7 +71,6 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
     const align = c.align ?? 'left'
 
     if (c.charPitch && c.charPitch > 0) {
-      // Each character drawn individually, centered in its charPitch-wide cell.
       const totalWidth = c.charPitch * text.length
       const originX = align === 'right' ? c.x - totalWidth
                     : align === 'center' ? c.x - totalWidth / 2
@@ -113,13 +116,23 @@ export async function renderBir2307Pdf(data: Bir2307Data): Promise<Uint8Array> {
   drawAt('payorAddress', data.payorAddress)
   drawAt('payorZip', data.payorZipCode)
 
-  drawAt('rowLabel', 'Rentals of Real Property')
-  drawAt('rowAtc', data.atcCode, accent)
-  drawAt('rowGross', formatAmount(data.grossAmount))
-  drawAt('rowTotal', formatAmount(data.grossAmount))
-  drawAt('rowTaxWithheld', formatAmount(data.taxWithheldAmount))
-  drawAt('totalsGross', formatAmount(data.grossAmount))
-  drawAt('totalsTax', formatAmount(data.taxWithheldAmount))
+  // Part III — up to 5 line items
+  const lines = data.lines.slice(0, MAX_ROWS)
+  let totalGross = 0
+  let totalTax = 0
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const n = i + 1
+    drawAt(`row${n}Label`, line.description)
+    drawAt(`row${n}Atc`, line.atcCode, accent)
+    drawAt(`row${n}Gross`, formatAmount(line.grossAmount))
+    drawAt(`row${n}Total`, formatAmount(line.grossAmount))
+    drawAt(`row${n}TaxWithheld`, formatAmount(line.taxWithheldAmount))
+    totalGross += line.grossAmount
+    totalTax += line.taxWithheldAmount
+  }
+  drawAt('totalsGross', formatAmount(totalGross))
+  drawAt('totalsTax', formatAmount(totalTax))
 
   if (data.signatureImagePngBase64) {
     try {
