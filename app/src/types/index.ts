@@ -468,3 +468,14 @@ export interface POMilestone {
 // ─── Check Payment Types ────────────────────────────────────
 
 export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'FAILED' | 'PENDING_CLEARANCE' | 'BOUNCED'
+
+// External payment link (chatbot-driven flow)
+export interface ExternalPayLinkPayload {
+  inv: string        // invoice_number — chatbot-supplied, arbitrary string
+  name: string       // customer_name
+  amt: number        // amount (PHP)
+  due?: string       // due_date (YYYY-MM-DD), optional
+  email?: string     // payer_email, optional
+  sid?: string       // session_id from chatbot, optional
+  exp: number        // expiry timestamp (ms epoch)
+}
