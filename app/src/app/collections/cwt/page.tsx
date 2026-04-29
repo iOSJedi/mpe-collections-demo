@@ -3,6 +3,8 @@ import { cwtCertificates, customers, invoices } from '@/db/schema'
 import { desc, inArray } from 'drizzle-orm'
 import { CertificateQueue } from '@/components/cwt/CertificateQueue'
 
+export const dynamic = 'force-dynamic'
+
 export default async function Page() {
   // Flat selects sidestep a drizzle pg-proxy nested-select bug on nullable timestamps.
   const certs = await db.select({
