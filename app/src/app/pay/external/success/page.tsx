@@ -9,8 +9,9 @@ function SuccessPage() {
   const amount = searchParams.get('amount')
   const invoice = searchParams.get('invoice')
 
-  const amountDisplay = amount
-    ? `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+  const parsedAmount = amount ? Number(amount) : NaN
+  const amountDisplay = Number.isFinite(parsedAmount)
+    ? `₱${parsedAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
     : null
 
   return (
