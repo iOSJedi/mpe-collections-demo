@@ -49,8 +49,7 @@ export async function POST(request: NextRequest) {
 
     const token = signExternalLinkToken(payload)
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const url = `${appUrl}/pay/external?token=${token}`
+    const url = `${request.nextUrl.origin}/pay/external?token=${token}`
 
     return NextResponse.json({
       url,
