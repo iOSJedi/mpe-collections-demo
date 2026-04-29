@@ -23,6 +23,9 @@ function ensureInitialized() {
   if (serviceAccount && !admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      databaseURL:
+        process.env.FIREBASE_DATABASE_URL ||
+        process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
     })
   }
 }
@@ -30,6 +33,11 @@ function ensureInitialized() {
 export function getAuth() {
   ensureInitialized()
   return admin.apps.length > 0 ? admin.auth() : null
+}
+
+export function getRtdb() {
+  ensureInitialized()
+  return admin.apps.length > 0 ? admin.database() : null
 }
 
 export default admin
