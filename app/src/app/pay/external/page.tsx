@@ -180,8 +180,9 @@ function ExternalPayPage() {
                   {!clientSecret && (
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs text-slate-500 mb-1 block">Email (for receipt)</label>
+                        <label htmlFor="payer-email" className="text-xs text-slate-500 mb-1 block">Email (for receipt)</label>
                         <input
+                          id="payer-email"
                           type="email"
                           value={payerEmail}
                           onChange={(e) => setPayerEmail(e.target.value)}
@@ -190,8 +191,9 @@ function ExternalPayPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-500 mb-1 block">Name on card</label>
+                        <label htmlFor="payer-name" className="text-xs text-slate-500 mb-1 block">Name on card</label>
                         <input
+                          id="payer-name"
                           type="text"
                           value={payerName}
                           onChange={(e) => setPayerName(e.target.value)}
@@ -208,7 +210,7 @@ function ExternalPayPage() {
 
                       <button
                         onClick={preparePaymentIntent}
-                        disabled={intentLoading || !payerEmail.trim()}
+                        disabled={intentLoading || !payerEmail.trim() || !payerName.trim()}
                         className="w-full py-3 rounded-lg bg-[#003B1F] hover:bg-[#003B1F]/90 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {intentLoading ? 'Preparing...' : 'Continue to Card Payment'}
