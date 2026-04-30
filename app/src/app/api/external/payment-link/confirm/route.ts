@@ -78,6 +78,31 @@ export async function POST(request: NextRequest) {
 
     const ref = await rtdb.ref('collections/external_payments').push(record)
 
+    if (payload.cb) {
+      const callbackBody = {
+        status: 'succeeded' as const,
+        invoiceNumber: payload.inv,
+        amount: payload.amt,
+        currency: 'PHP',
+        paymentIntentId: paymentIntent.id,
+        paymentId: ref.key,
+        payerEmail: effectiveEmail || undefined,
+        payerName: effectiveName || undefined,
+        sessionId: payload.sid || undefined,
+        timestamp: new Date().toISOString(),
+      }
+      fetch(payload.cb, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'ayala-land-payment-link/1.0',
+        },
+        body: JSON.stringify(callbackBody),
+      }).catch((err) => {
+        console.error('External pay callback (success) failed:', err)
+      })
+    }
+
     return NextResponse.json({
       success: true,
       paymentId: ref.key,
