@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
       dueDate,
       payerEmail,
       sessionId,
+      callbackUrl,
     } = body
 
     if (typeof amount !== 'number' || !(amount > 0)) {
@@ -35,6 +36,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    let validCallbackUrl: string | undefined
+    if (typeof callbackUrl === 'string' && callbackUrl.trim()) {
+      try {
+        const parsed = new URL(callbackUrl.trim())
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          return NextResponse.json(
+            { error: 'callbackUrl must use http or https' },
+            { status: 400 }
+          )
+        }
+        validCallbackUrl = parsed.toString()
+      } catch {
+        return NextResponse.json(
+          { error: 'callbackUrl is not a valid URL' },
+          { status: 400 }
+        )
+      }
+    }
+
     const exp = Date.now() + 24 * 60 * 60 * 1000
 
     const payload: ExternalPayLinkPayload = {
@@ -46,6 +66,7 @@ export async function POST(request: NextRequest) {
     if (typeof dueDate === 'string' && dueDate.trim()) payload.due = dueDate.trim()
     if (typeof payerEmail === 'string' && payerEmail.trim()) payload.email = payerEmail.trim()
     if (typeof sessionId === 'string' && sessionId.trim()) payload.sid = sessionId.trim()
+    if (validCallbackUrl) payload.cb = validCallbackUrl
 
     const token = signExternalLinkToken(payload)
 
