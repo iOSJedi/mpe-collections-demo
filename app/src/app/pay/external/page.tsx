@@ -14,17 +14,18 @@ interface VerifiedTokenData {
   dueDate?: string
   payerEmail?: string
   sessionId?: string
+  callbackUrl?: string
   expiresAt: string
 }
 
 const appearance: Appearance = {
   theme: 'flat',
   variables: {
-    colorPrimary: '#003B1F',
+    colorPrimary: '#0E2C20',
     colorBackground: '#ffffff',
     fontFamily: 'Inter, system-ui, sans-serif',
   },
-  rules: { '.Label': { color: '#64748b' } },
+  rules: { '.Label': { color: '#383D36' } },
 }
 
 function defaultEmail(sessionId: string | undefined): string {
@@ -51,13 +52,11 @@ function ExternalPayPage() {
   const [intentLoading, setIntentLoading] = useState(false)
   const [intentError, setIntentError] = useState<string | null>(null)
 
-  // Load Stripe lazily on the client.
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
     if (key) setStripePromise(loadStripe(key))
   }, [])
 
-  // Verify the token once on mount.
   useEffect(() => {
     if (!token) {
       setError('No payment token provided.')
@@ -117,93 +116,145 @@ function ExternalPayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      <header className="bg-[#003B1F] px-6 py-4 shadow-md">
-        <div className="max-w-md mx-auto">
-          <span className="text-[#C9A84C] font-bold text-xl tracking-widest uppercase">
-            AYALA LAND
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F5EEDE' }}>
+      <header className="px-6 py-4 shadow-md" style={{ backgroundColor: '#0E2C20' }}>
+        <div className="max-w-md mx-auto flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/ali-access-logo.svg"
+            alt="Ayala Land Access"
+            className="h-9 w-9 rounded-md bg-white"
+          />
+          <span className="text-white font-bold text-base tracking-tight">
+            Ayala Land Access
           </span>
         </div>
       </header>
 
       <main className="flex-1 flex items-start justify-center py-8 px-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="bg-[#003B1F]/5 border-b border-slate-200 px-6 py-4">
-              <h1 className="text-lg font-semibold text-[#003B1F]">Payment Portal</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Secure checkout via chatbot link</p>
+          <div
+            className="bg-white rounded-xl shadow-sm overflow-hidden border"
+            style={{ borderColor: '#DDD4C9' }}
+          >
+            <div
+              className="px-6 py-4 border-b"
+              style={{ borderColor: '#DDD4C9', backgroundColor: 'rgba(14,44,32,0.05)' }}
+            >
+              <h1 className="text-lg font-semibold" style={{ color: '#0E2C20' }}>
+                Payment Portal
+              </h1>
             </div>
 
             <div className="p-6">
               {loading && (
                 <div className="flex flex-col items-center gap-3 py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#003B1F]" />
-                  <p className="text-sm text-slate-500">Loading payment details...</p>
+                  <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#0E2C20' }} />
+                  <p className="text-sm" style={{ color: '#383D36' }}>
+                    Loading payment details...
+                  </p>
                 </div>
               )}
 
               {!loading && error && (
                 <div className="py-8 text-center space-y-3">
-                  <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                  <div
+                    className="rounded-lg p-4 border"
+                    style={{ backgroundColor: '#FEEFEA', borderColor: '#CE3106' }}
+                  >
+                    <p className="text-sm font-medium" style={{ color: '#CE3106' }}>
+                      {error}
+                    </p>
                   </div>
                 </div>
               )}
 
               {!loading && !error && verified && (
                 <div className="space-y-6">
-                  {/* Summary */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+                  <div
+                    className="rounded-lg border p-4 space-y-2"
+                    style={{ borderColor: '#DDD4C9', backgroundColor: '#F5EEDE' }}
+                  >
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Invoice</span>
-                      <span className="font-medium text-slate-800">{verified.invoiceNumber}</span>
+                      <span style={{ color: '#383D36' }}>Invoice</span>
+                      <span className="font-medium" style={{ color: '#0E2C20' }}>
+                        {verified.invoiceNumber}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Customer</span>
-                      <span className="font-medium text-slate-800">{verified.customerName}</span>
+                      <span style={{ color: '#383D36' }}>Customer</span>
+                      <span className="font-medium" style={{ color: '#0E2C20' }}>
+                        {verified.customerName}
+                      </span>
                     </div>
                     {verified.dueDate && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Due Date</span>
-                        <span className="font-medium text-slate-800">{verified.dueDate}</span>
+                        <span style={{ color: '#383D36' }}>Due Date</span>
+                        <span className="font-medium" style={{ color: '#0E2C20' }}>
+                          {verified.dueDate}
+                        </span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm border-t border-slate-200 pt-2">
-                      <span className="text-slate-600 font-medium">Amount Due</span>
-                      <span className="font-bold text-[#003B1F] text-base">
+                    <div
+                      className="flex justify-between text-sm border-t pt-2"
+                      style={{ borderColor: '#DDD4C9' }}
+                    >
+                      <span className="font-medium" style={{ color: '#383D36' }}>
+                        Amount Due
+                      </span>
+                      <span
+                        className="font-bold text-base"
+                        style={{ color: '#0E2C20' }}
+                      >
                         ₱{verified.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
 
-                  {/* Payer info */}
                   {!clientSecret && (
                     <div className="space-y-3">
                       <div>
-                        <label htmlFor="payer-email" className="text-xs text-slate-500 mb-1 block">Email (for receipt)</label>
+                        <label
+                          htmlFor="payer-email"
+                          className="text-xs mb-1 block"
+                          style={{ color: '#383D36' }}
+                        >
+                          Email (for receipt)
+                        </label>
                         <input
                           id="payer-email"
                           type="email"
                           value={payerEmail}
                           onChange={(e) => setPayerEmail(e.target.value)}
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003B1F]/30 focus:border-[#003B1F]"
+                          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                          style={{ borderColor: '#DDD4C9', color: '#0E2C20' }}
                           placeholder="you@example.com"
                         />
                       </div>
                       <div>
-                        <label htmlFor="payer-name" className="text-xs text-slate-500 mb-1 block">Name on card</label>
+                        <label
+                          htmlFor="payer-name"
+                          className="text-xs mb-1 block"
+                          style={{ color: '#383D36' }}
+                        >
+                          Name on card
+                        </label>
                         <input
                           id="payer-name"
                           type="text"
                           value={payerName}
                           onChange={(e) => setPayerName(e.target.value)}
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#003B1F]/30 focus:border-[#003B1F]"
+                          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                          style={{ borderColor: '#DDD4C9', color: '#0E2C20' }}
                           placeholder="Cardholder name"
                         />
                       </div>
 
                       {intentError && (
-                        <p className="text-sm text-red-600 rounded-md bg-red-50 border border-red-200 px-3 py-2">
+                        <p
+                          className="text-sm rounded-md px-3 py-2 border"
+                          style={{ color: '#CE3106', borderColor: '#CE3106', backgroundColor: '#FEEFEA' }}
+                        >
                           {intentError}
                         </p>
                       )}
@@ -211,14 +262,14 @@ function ExternalPayPage() {
                       <button
                         onClick={preparePaymentIntent}
                         disabled={intentLoading || !payerEmail.trim() || !payerName.trim()}
-                        className="w-full py-3 rounded-lg bg-[#003B1F] hover:bg-[#003B1F]/90 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-full py-3 rounded-lg text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:opacity-90"
+                        style={{ backgroundColor: '#0E2C20' }}
                       >
                         {intentLoading ? 'Preparing...' : 'Continue to Card Payment'}
                       </button>
                     </div>
                   )}
 
-                  {/* Stripe form */}
                   {clientSecret && stripePromise && (
                     <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
                       <ExternalPaymentForm
@@ -239,9 +290,12 @@ function ExternalPayPage() {
       </main>
 
       <footer className="py-4 px-4 text-center">
-        <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
-          <ShieldCheck className="h-3.5 w-3.5 text-[#003B1F]" />
-          <span>Secured by Ayala Land Collections Portal</span>
+        <div
+          className="flex items-center justify-center gap-2 text-xs"
+          style={{ color: '#383D36' }}
+        >
+          <ShieldCheck className="h-3.5 w-3.5" style={{ color: '#0E2C20' }} />
+          <span>Secured by Ayala Land Access</span>
         </div>
       </footer>
     </div>
@@ -252,8 +306,11 @@ export default function ExternalPayPageWrapper() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#003B1F]" />
+        <div
+          className="min-h-screen flex items-center justify-center"
+          style={{ backgroundColor: '#F5EEDE' }}
+        >
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#0E2C20' }} />
         </div>
       }
     >
