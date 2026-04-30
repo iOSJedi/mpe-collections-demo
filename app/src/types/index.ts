@@ -477,5 +477,6 @@ export interface ExternalPayLinkPayload {
   due?: string       // due_date (YYYY-MM-DD), optional
   email?: string     // payer_email, optional
   sid?: string       // session_id from chatbot, optional
+  cb?: string        // callback URL — chatbot webhook, optional
   exp: number        // expiry timestamp (ms epoch)
 }
