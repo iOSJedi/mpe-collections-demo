@@ -18,15 +18,25 @@ interface ExternalPaymentFormProps {
 const CARD_ELEMENT_OPTIONS = {
   style: {
     base: {
-      color: '#1e293b',
+      color: '#0E2C20',
       fontFamily: 'Inter, system-ui, sans-serif',
       fontSize: '16px',
       fontSmoothing: 'antialiased',
-      '::placeholder': { color: '#94a3b8' },
+      '::placeholder': { color: '#383D36' },
     },
-    invalid: { color: '#dc2626', iconColor: '#dc2626' },
+    invalid: { color: '#CE3106', iconColor: '#CE3106' },
   },
   hidePostalCode: false,
+}
+
+function notifyFailure(token: string, errorMessage: string) {
+  fetch('/api/external/payment-link/notify-failure', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, errorMessage }),
+  }).catch(() => {
+    // Fire-and-forget; do not surface this to the user.
+  })
 }
 
 export function ExternalPaymentForm({
@@ -61,12 +71,16 @@ export function ExternalPaymentForm({
     )
 
     if (stripeError) {
-      setError(stripeError.message ?? 'Payment failed.')
+      const msg = stripeError.message ?? 'Payment failed.'
+      notifyFailure(token, msg)
+      setError(msg)
       setLoading(false)
       return
     }
 
     if (paymentIntent?.status !== 'succeeded') {
+      const msg = `Payment was not completed. Status: ${paymentIntent?.status ?? 'unknown'}`
+      notifyFailure(token, msg)
       setError('Payment was not completed. Please try again.')
       setLoading(false)
       return
@@ -85,7 +99,9 @@ export function ExternalPaymentForm({
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? 'Failed to record payment.')
+        const msg = data.error ?? 'Failed to record payment.'
+        notifyFailure(token, msg)
+        setError(msg)
         setLoading(false)
         return
       }
@@ -96,19 +112,27 @@ export function ExternalPaymentForm({
       })
       router.push(`/pay/external/success?${params.toString()}`)
     } catch {
-      setError('Failed to record payment. Please contact support.')
+      const msg = 'Failed to record payment. Please contact support.'
+      notifyFailure(token, msg)
+      setError(msg)
       setLoading(false)
     }
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div
+        className="rounded-lg border bg-white p-4"
+        style={{ borderColor: '#DDD4C9' }}
+      >
         <CardElement options={CARD_ELEMENT_OPTIONS} />
       </div>
 
       {error && (
-        <p className="text-sm text-red-600 rounded-md bg-red-50 border border-red-200 px-3 py-2">
+        <p
+          className="text-sm rounded-md px-3 py-2 border"
+          style={{ color: '#CE3106', borderColor: '#CE3106', backgroundColor: '#FEEFEA' }}
+        >
           {error}
         </p>
       )}
@@ -116,7 +140,8 @@ export function ExternalPaymentForm({
       <Button
         onClick={handlePay}
         disabled={!stripe || loading}
-        className="w-full bg-[#003B1F] hover:bg-[#003B1F]/90 text-white"
+        className="w-full text-white hover:opacity-90"
+        style={{ backgroundColor: '#0E2C20' }}
         size="lg"
       >
         {loading ? (
@@ -129,7 +154,7 @@ export function ExternalPaymentForm({
         )}
       </Button>
 
-      <p className="text-xs text-center text-slate-400">
+      <p className="text-xs text-center" style={{ color: '#383D36' }}>
         Secured by Stripe. Card details are never stored on our servers.
       </p>
     </div>
