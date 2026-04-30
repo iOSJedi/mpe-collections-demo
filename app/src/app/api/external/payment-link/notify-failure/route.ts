@@ -37,16 +37,19 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     }
 
-    fetch(payload.cb, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'ayala-land-payment-link/1.0',
-      },
-      body: JSON.stringify(callbackBody),
-    }).catch((err) => {
+    try {
+      await fetch(payload.cb, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'ayala-land-payment-link/1.0',
+        },
+        body: JSON.stringify(callbackBody),
+        signal: AbortSignal.timeout(5000),
+      })
+    } catch (err) {
       console.error('External pay callback (failure) failed:', err)
-    })
+    }
 
     return NextResponse.json({ ok: true, dispatched: true })
   } catch (error) {
