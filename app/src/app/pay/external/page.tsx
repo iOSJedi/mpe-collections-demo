@@ -226,7 +226,7 @@ function ExternalPayPage() {
                           type="email"
                           value={payerEmail}
                           onChange={(e) => setPayerEmail(e.target.value)}
-                          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2C20]/30 focus:border-[#0E2C20]"
                           style={{ borderColor: '#DDD4C9', color: '#0E2C20' }}
                           placeholder="you@example.com"
                         />
@@ -244,7 +244,7 @@ function ExternalPayPage() {
                           type="text"
                           value={payerName}
                           onChange={(e) => setPayerName(e.target.value)}
-                          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2C20]/30 focus:border-[#0E2C20]"
                           style={{ borderColor: '#DDD4C9', color: '#0E2C20' }}
                           placeholder="Cardholder name"
                         />
