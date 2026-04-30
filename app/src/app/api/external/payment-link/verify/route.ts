@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       dueDate: payload.due,
       payerEmail: payload.email,
       sessionId: payload.sid,
+      callbackUrl: payload.cb,
       expiresAt: new Date(payload.exp).toISOString(),
     })
   } catch (error) {
