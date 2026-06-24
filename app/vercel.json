@@ -2,5 +2,19 @@
   "crons": [
     { "path": "/api/cron/refresh-insights", "schedule": "0 22 * * *" },
     { "path": "/api/cron/generate-cwt", "schedule": "0 1 * * *" }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "mpe-collections-demo.vercel.app" }],
+      "destination": "https://mpe-payments-demo.vercel.app/",
+      "permanent": false
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "mpe-collections-demo.vercel.app" }],
+      "destination": "https://mpe-payments-demo.vercel.app/:path*",
+      "permanent": false
+    }
   ]
 }
